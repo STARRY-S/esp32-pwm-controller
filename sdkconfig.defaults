@@ -1,0 +1,2 @@
+# Disable log color output
+CONFIG_LOG_COLORS=n

@@ -36,7 +36,7 @@ static void wifi_event_handler(
 	}
 }
 
-void wifi_init_softap(
+void init_wifi_softap(
 	const char *ssid,
 	uint8_t channel,
 	const char *password,
@@ -59,10 +59,8 @@ void wifi_init_softap(
 
 	wifi_config_t config = {
 		.ap = {
-			.ssid = "",
 			.ssid_len = strlen(ssid),
 			.channel = channel,
-			.password = "",
 			.max_connection = max_connection,
 			.authmode = WIFI_AUTH_WPA2_PSK,
 			.pmf_cfg = {
@@ -70,12 +68,10 @@ void wifi_init_softap(
 			},
 		},
 	};
-	for (int i = 0; i < strlen(ssid); i++) {
-		config.ap.ssid[i] = ssid[i];
-	}
-	for (int i = 0; i < strlen(password); i++) {
-		config.ap.password[i] = password[i];
-	}
+	memset(config.ap.ssid, 0, sizeof(config.ap.ssid));
+	memset(config.ap.password, 0, sizeof(config.ap.password));
+	memcpy(config.ap.ssid, ssid, strlen(ssid));
+	memcpy(config.ap.password, password, strlen(password));
 	if (strlen(password) == 0) {
 		config.ap.authmode = WIFI_AUTH_OPEN;
 	}

@@ -3,10 +3,11 @@
 
 #include <string.h>
 
-void wifi_init_softap(
+void init_wifi_softap(
 	const char *ssid,
 	uint8_t channel,
 	const char *password,
-	uint8_t max_connection);
+	uint8_t max_connection
+);
 
 #endif
