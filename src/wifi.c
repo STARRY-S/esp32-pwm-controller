@@ -19,7 +19,7 @@ static void wifi_event_handler(
 	{
 		wifi_event_ap_staconnected_t *event =
 			(wifi_event_ap_staconnected_t*) event_data;
-		ESP_LOGI(TAG, "station "MACSTR" join, AID=%d",
+		ESP_LOGD(TAG, "station "MACSTR" join, AID=%d",
 			MAC2STR(event->mac), event->aid);
 		break;
 	}
@@ -27,7 +27,7 @@ static void wifi_event_handler(
 	{
 		wifi_event_ap_stadisconnected_t* event =
 			(wifi_event_ap_stadisconnected_t*) event_data;
-		ESP_LOGI(TAG, "station "MACSTR" leave, AID=%d",
+		ESP_LOGD(TAG, "station "MACSTR" leave, AID=%d",
 			MAC2STR(event->mac), event->aid);
 		break;
 	}

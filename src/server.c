@@ -1,16 +1,41 @@
-#include "server.h"
 #include <esp_log.h>
 #include <esp_vfs.h>
+
+#include "server.h"
+#include "storage.h"
 
 #define TAG "SERVER"
 #define MIN( a , b ) ( a < b ) ? ( a ) : ( b )
 
 #define SCRATCH_BUFSIZE  8192
 
+#define IS_FILE_EXT(filename, ext) \
+    (strcasecmp(&filename[strlen(filename) - sizeof(ext) + 1], ext) == 0)
+
 struct http_context {
 	char base_path[16];
 	char scratch[SCRATCH_BUFSIZE];
 };
+
+/* Set HTTP response content type according to file extension */
+static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filename)
+{
+	if (IS_FILE_EXT(filename, ".pdf")) {
+		return httpd_resp_set_type(req, "application/pdf");
+	} else if (IS_FILE_EXT(filename, ".html")) {
+		return httpd_resp_set_type(req, "text/html");
+	} else if (IS_FILE_EXT(filename, ".jpeg")) {
+		return httpd_resp_set_type(req, "image/jpeg");
+	} else if (IS_FILE_EXT(filename, ".jpg")) {
+		return httpd_resp_set_type(req, "image/jpeg");
+	} else if (IS_FILE_EXT(filename, ".png")) {
+		return httpd_resp_set_type(req, "image/png");
+	} else if (IS_FILE_EXT(filename, ".ico")) {
+		return httpd_resp_set_type(req, "image/x-icon");
+	}
+	return httpd_resp_set_type(req, "text/plain");
+}
+
 
 /* Copies the full path into destination buffer and returns
  * pointer to path (skipping the preceding base path) */
@@ -42,63 +67,75 @@ static const char* get_path_from_uri(
 	return dest + base_pathlen;
 }
 
+static esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
+{
+	char *buffer = NULL;
+	read_file(&buffer, "/spiffs/404.html");
+	if (!buffer) {
+		httpd_resp_send_err(
+			req,
+			HTTPD_500_INTERNAL_SERVER_ERROR,
+			"failed to open '404.html'"
+		);
+		return ESP_FAIL;
+	}
+	httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, buffer);
+	free(buffer);
+
+	return ESP_FAIL;
+}
+
 static esp_err_t http_get_handler(httpd_req_t *req)
 {
-	static char buffer[256];
-	size_t length = 0;
+	static char buffer[1024];
 	esp_err_t ret = ESP_OK;
-
-	char filepath[256] = "";
+	char filepath[128] = "";
 	struct http_context *context = req->user_ctx;
-
-	if (strcmp(req->uri, "/ping") == 0) {
-		httpd_resp_send(req, "PONG", HTTPD_RESP_USE_STRLEN);
-		return ESP_OK;
-	}
-
 	const char *filename = get_path_from_uri(
 		filepath,
 		context->base_path,
 		req->uri,
 		sizeof(filepath)
 	);
-
 	if (!filename) {
-		/* Respond with 500 Internal Server Error */
-		httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "FILENAME TOO LONG");
+		httpd_resp_send_err(
+			req,
+			HTTPD_500_INTERNAL_SERVER_ERROR,
+			"FILENAME TOO LONG"
+		);
 		return ESP_FAIL;
 	}
 
-	// Host
-	length = httpd_req_get_hdr_value_len(req, "Host") + 1;
+	size_t length = httpd_req_get_hdr_value_len(req, "Host") + 1;
 	if (length > 1) {
-		/* Copy null terminated value string into buffer */
 		ret = httpd_req_get_hdr_value_str(req, "Host", buffer, length);
 		if (ret == ESP_OK) {
 			ESP_LOGI(TAG, "HTTP get from host: %s", buffer);
 		}
-		memset(buffer, 0, sizeof(buffer));
 	}
-
-
-	sprintf(buffer, "<h1>filename: %s</h1>", filename);
-	httpd_resp_send(req, buffer, HTTPD_RESP_USE_STRLEN);
-	ESP_LOGI(TAG, "filepath: %s", filepath);
-
-	/* After sending the HTTP response the old HTTP request
-	 * headers are lost. Check if HTTP request headers can be read now. */
-	if (httpd_req_get_hdr_value_len(req, "Host") == 0) {
-		ESP_LOGD(TAG, "Connection lost");
+	if (!is_regular_file(filepath)) {
+		if (filepath[strlen(filepath)-1] == '/') {
+			filepath[strlen(filepath)-1] = '\0';
+		}
+		sprintf(buffer, "%s/index.html", filepath);
+	} else {
+		sprintf(buffer, "%s", filepath);
 	}
-
-	return ESP_OK;
-}
-
-static esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
-{
-	/* For any other URI send 404 and close socket */
-	httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "404 NOT FOUND");
-	return ESP_FAIL;
+	char *content = NULL;
+	int size = read_file(&content, buffer);
+	if (!content) {
+		return http_404_error_handler(req, HTTPD_404_NOT_FOUND);
+	}
+	ret = set_content_type_from_file(req, buffer);
+	if (ret != ESP_OK) {
+		free(content);
+		content = NULL;
+		return ret;
+	}
+	ret = httpd_resp_send(req, content, size);
+	free(content);
+	content = NULL;
+	return ret;
 }
 
 httpd_handle_t start_webserver(uint16_t port)
@@ -146,6 +183,5 @@ httpd_handle_t start_webserver(uint16_t port)
 
 esp_err_t stop_webserver(httpd_handle_t server)
 {
-	// Stop the httpd server
 	return httpd_stop(server);
 }
