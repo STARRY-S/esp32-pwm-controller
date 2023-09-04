@@ -58,6 +58,14 @@ int read_file(char** content, const char *filename)
 	return size;
 }
 
+int write_file(char *filename, char *content)
+{
+	FILE *fd = fopen(filename, "w");
+	fprintf(fd, "%s", content);
+	fclose(fd);
+	return ESP_OK;
+}
+
 bool is_regular_file(const char *filename)
 {
 	struct stat s;

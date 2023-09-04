@@ -3,10 +3,12 @@
 
 #include "server.h"
 #include "storage.h"
+#include "controller.h"
 
 #define TAG "SERVER"
 #define MIN( a , b ) ( a < b ) ? ( a ) : ( b )
 
+#define EXAMPLE_HTTP_QUERY_KEY_MAX_LEN 64
 #define SCRATCH_BUFSIZE  8192
 
 #define IS_FILE_EXT(filename, ext) \
@@ -18,8 +20,9 @@ struct http_context {
 };
 
 /* Set HTTP response content type according to file extension */
-static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filename)
-{
+static esp_err_t set_content_type_from_file(
+	httpd_req_t *req, const char *filename
+) {
 	if (IS_FILE_EXT(filename, ".pdf")) {
 		return httpd_resp_set_type(req, "application/pdf");
 	} else if (IS_FILE_EXT(filename, ".html")) {
@@ -85,7 +88,125 @@ static esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
 	return ESP_FAIL;
 }
 
-static esp_err_t http_get_handler(httpd_req_t *req)
+static esp_err_t http_controller_handler(httpd_req_t *req)
+{
+	bool remove_query = false;
+	while (1) {
+		/* Read URL query string length and allocate memory for
+		* length + 1, extra byte for null termination.
+		*/
+		int length = httpd_req_get_url_query_len(req) + 1;
+		if (length < 1) {
+			break;
+		}
+
+		char *buffer = malloc(length);
+		if (httpd_req_get_url_query_str(req, buffer, length) != ESP_OK)
+		{
+			free(buffer);
+			break;
+		}
+		ESP_LOGI(TAG, "Found URL query => %s", buffer);
+		remove_query = true;
+		char param[128] = { 0 };
+		if (httpd_query_key_value(
+			buffer, "fan-enable", param, sizeof(param)) == ESP_OK) {
+			ESP_LOGI(TAG,
+				"Found URL query parameter => fan-enable=%s",
+				param);
+			if (strcmp(param, "0") == 0) {
+				int ret = controller_set_pwm_duty(0);
+				if (ret != ESP_OK) {
+					ESP_LOGE(TAG,
+						"failed to set duty: %d", ret);
+				}
+				free(buffer);
+				buffer = NULL;
+				break;
+			}
+		}
+		if (httpd_query_key_value(
+			buffer, "fan-speed", param, sizeof(param)) == ESP_OK) {
+			ESP_LOGI(TAG,
+				"Found URL query parameter => fan-speed=%s",
+				param);
+			int duty = 0;
+			int param_length = strlen(param);
+			for (int i = 0; i < param_length; i++) {
+				if (param[i] > '9' || param[i] < '0') {
+					continue;
+				}
+				duty = duty * 10 + param[i] - '0';
+			}
+			if (duty > 255) {
+				ESP_LOGE(TAG, "duty outrange: %d", duty);
+			} else {
+				int ret = controller_set_pwm_duty(duty);
+				if (ret != ESP_OK) {
+					free(buffer);
+					buffer = NULL;
+					ESP_LOGE(TAG,
+						"failed to set duty: %d", ret);
+					break;
+				}
+			}
+		}
+		if (httpd_query_key_value(
+			buffer, "getconfig", param, sizeof(param)) == ESP_OK) {
+			free(buffer);
+			buffer = NULL;
+
+			uint8_t duty = 0;
+			int ret = controller_get_pwm_duty(&duty);
+			if (ret != ESP_OK) {
+				ESP_LOGE(TAG,
+					"failed to get duty: %d", ret);
+				break;
+			}
+			buffer = malloc(sizeof(char) * 128);
+			sprintf(buffer, "{\"duty\":%u}", duty);
+			ret = httpd_resp_set_type(req, "application/json");
+			if (ret != ESP_OK) {
+				return ret;
+			}
+			ret = httpd_resp_send(req, buffer, -1);
+			free(buffer);
+			return ret;
+		}
+
+		free(buffer);
+		break;
+	}
+
+	if (remove_query) {
+		return httpd_resp_send(req,
+"<!DOCTYPE html>\n"
+"<head>\n"
+"<meta http-equiv=\"Refresh\" content=\"0; url='/controller'\" />\n"
+"</head>\n"
+"<body></body>\n",
+			-1);
+	}
+
+	char *content = NULL;
+	int size = read_file(&content, "/spiffs/controller/index.html");
+	if (!content) {
+		return http_404_error_handler(req, HTTPD_404_NOT_FOUND);
+	}
+	esp_err_t ret = httpd_resp_set_type(req, "text/html");
+	if (ret != ESP_OK) {
+		free(content);
+		content = NULL;
+		return ret;
+	}
+	ret = httpd_resp_send(req, content, size);
+	free(content);
+	content = NULL;
+
+	return ESP_OK;
+}
+
+static esp_err_t http_default_handler(httpd_req_t *req)
 {
 	static char buffer[1024];
 	esp_err_t ret = ESP_OK;
@@ -104,6 +225,20 @@ static esp_err_t http_get_handler(httpd_req_t *req)
 			"FILENAME TOO LONG"
 		);
 		return ESP_FAIL;
+	}
+
+	// Only GET method allowed for other URLs
+	if (req->method != HTTP_GET) {
+		return httpd_resp_send_err(
+			req,
+			HTTPD_405_METHOD_NOT_ALLOWED,
+			"METHOD NOT ALLOWED"
+		);
+	}
+
+	// Register handler for controller
+	if (strcmp(filename, "/controller") == 0) {
+		return http_controller_handler(req);
 	}
 
 	size_t length = httpd_req_get_hdr_value_len(req, "Host") + 1;
@@ -167,7 +302,7 @@ httpd_handle_t start_webserver(uint16_t port)
 	static httpd_uri_t get_handler = {
 		.uri = "/*",
 		.method = HTTP_GET,
-		.handler = http_get_handler,
+		.handler = http_default_handler,
 		.user_ctx = &context
 	};
 	ESP_ERROR_CHECK(httpd_register_uri_handler(server, &get_handler));

@@ -11,10 +11,14 @@
 #include "server.h"
 #include "wifi.h"
 #include "storage.h"
+#include "pwm.h"
+#include "controller.h"
 
 #define TAG "MAIN"
 #define WIFI_SSID "ESP32_WIFI"
 #define WIFI_PASS "testpassword123"
+#define PWM_GPIO 12
+#define PWM_FREQ 25000
 
 void app_main()
 {
@@ -23,6 +27,7 @@ void app_main()
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
 	init_wifi_softap(WIFI_SSID, 1, WIFI_PASS, 4);
 	init_spiffs_storage();
+	init_controller(PWM_GPIO, PWM_FREQ);
 
 	httpd_handle_t *server = start_webserver(80);
 	while (server) {

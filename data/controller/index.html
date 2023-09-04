@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+    <title>Fan Controller</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <h1>PWM Fan Controller</h1>
+    <hr>
+    <br>
+    <form id="submit-form">
+        <input type='hidden' id="fan-enable-hidden" name='fan-enable' value='0'>
+        <input type="checkbox" id="fan-enable" name="fan-enable" value="1">
+        <label for="fan-enable"> Fan Enabled</label><br>
+
+        <label for="fan-speed"> Fan Speed:</label><br>
+        <input type="range" id="fan-speed" name="fan-speed" min="50" max="255" value="50">
+        <label id="fan-speed-percentage"> 0%</label>
+
+        <br>
+
+        <input type="submit" value="Submit">
+    </form>
+
+    <script src="/js/controller.js"></script>
+
+</body>
