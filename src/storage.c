@@ -70,6 +70,5 @@ bool is_regular_file(const char *filename)
 {
 	struct stat s;
 	stat(filename, &s);
-	ESP_LOGI(TAG, "file: %s, mode: 0X%X", filename, (unsigned int)s.st_mode);
 	return S_ISREG(s.st_mode);
 }

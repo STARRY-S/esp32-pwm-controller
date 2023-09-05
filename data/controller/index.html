@@ -1,27 +1,37 @@
 <!DOCTYPE html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fan Controller</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    <h1>PWM Fan Controller</h1>
-    <hr>
-    <br>
-    <form id="submit-form">
-        <input type='hidden' id="fan-enable-hidden" name='fan-enable' value='0'>
-        <input type="checkbox" id="fan-enable" name="fan-enable" value="1">
-        <label for="fan-enable"> Fan Enabled</label><br>
-
-        <label for="fan-speed"> Fan Speed:</label><br>
-        <input type="range" id="fan-speed" name="fan-speed" min="50" max="255" value="50">
-        <label id="fan-speed-percentage"> 0%</label>
-
+    <div class="box">
+        <h1>PWM Fan Controller</h1>
+        <hr>
         <br>
+        <form id="submit-form">
+            <div class="row">
+                <label for="fan-enable" class="column">Fan Enabled:</label>
+                <input type='hidden' id="fan-enable-hidden" name='fan-enable' value='0'>
+                <div class="column">
+                    <label class="switch">
+                        <input type="checkbox" id="fan-enable" name="fan-enable" value="1">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+            <br>
+            <div class="row">
+                <label for="fan-speed" class="column">Fan Speed:</label>
+                <code id="fan-speed-percentage" class="column">N/A</code>
+            </div>
+            <br>
+            <input type="range" id="fan-speed" name="fan-speed" min="20" max="255" value="0">
+            <br>
 
-        <input type="submit" value="Submit">
-    </form>
-
+            <input type="submit" value="Submit">
+        </form>
+    </div>
     <script src="/js/controller.js"></script>
-
 </body>

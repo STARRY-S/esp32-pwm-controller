@@ -35,10 +35,11 @@ static esp_err_t set_content_type_from_file(
 		return httpd_resp_set_type(req, "image/png");
 	} else if (IS_FILE_EXT(filename, ".ico")) {
 		return httpd_resp_set_type(req, "image/x-icon");
+	} else if (IS_FILE_EXT(filename, ".css")) {
+		return httpd_resp_set_type(req, "text/css");
 	}
 	return httpd_resp_set_type(req, "text/plain");
 }
-
 
 /* Copies the full path into destination buffer and returns
  * pointer to path (skipping the preceding base path) */
@@ -101,16 +102,15 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 		}
 
 		char *buffer = malloc(length);
-		if (httpd_req_get_url_query_str(req, buffer, length) != ESP_OK)
-		{
+		if (httpd_req_get_url_query_str(req, buffer, length) != 0) {
 			free(buffer);
 			break;
 		}
-		ESP_LOGI(TAG, "Found URL query => %s", buffer);
+		// ESP_LOGI(TAG, "Found URL query => %s", buffer);
 		remove_query = true;
 		char param[128] = { 0 };
 		if (httpd_query_key_value(
-			buffer, "fan-enable", param, sizeof(param)) == ESP_OK) {
+			buffer, "fan-enable", param, sizeof(param)) == 0) {
 			ESP_LOGI(TAG,
 				"Found URL query parameter => fan-enable=%s",
 				param);
@@ -126,7 +126,7 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 			}
 		}
 		if (httpd_query_key_value(
-			buffer, "fan-speed", param, sizeof(param)) == ESP_OK) {
+			buffer, "fan-speed", param, sizeof(param)) == 0) {
 			ESP_LOGI(TAG,
 				"Found URL query parameter => fan-speed=%s",
 				param);
@@ -152,7 +152,7 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 			}
 		}
 		if (httpd_query_key_value(
-			buffer, "getconfig", param, sizeof(param)) == ESP_OK) {
+			buffer, "getconfig", param, sizeof(param)) == 0) {
 			free(buffer);
 			buffer = NULL;
 

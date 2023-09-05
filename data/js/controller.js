@@ -1,9 +1,8 @@
 "use strict";
 
-function httpGet(u)
-{
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.open("GET", u, false); // false for synchronous request
+function httpGet(u) {
+    let xmlHttp = new XMLHttpRequest();
+    xmlHttp.open("GET", u, false);
     xmlHttp.send(null);
     return xmlHttp.responseText;
 }
@@ -23,23 +22,45 @@ function httpGet(u)
         }
     });
     fanSpeed.addEventListener("input", () => {
-        fanSpeedPer.textContent = Math.round(
-            (fanSpeed.value / 255) * 100) + "%";
+        let per = Math.round(fanSpeed.value * 100 / 255);
+        fanSpeedPer.textContent = `${fanSpeed.value} (${per} %)`;
+    });
+    fanEnable.addEventListener("input", () => {
+        if (fanEnable.checked) {
+            fanSpeed.value = 20;
+            fanSpeed.type = "range";
+            let per = Math.round(fanSpeed.value * 100 / 255);
+            fanSpeedPer.textContent = `${fanSpeed.value} (${per} %)`;
+        } else {
+            fanEnable.checked = false;
+            fanSpeed.value = 0;
+            fanSpeed.type = "hidden";
+            fanSpeedPer.textContent = `0 (0%)`;
+        }
     });
 
     let configText = httpGet("/controller?getconfig=1");
-    let config = JSON.parse(configText);
-    console.log("config: ", config);
+    let config = {
+        duty: 0,
+    };
+    try {
+        config = JSON.parse(configText);
+        console.log("config: ", config);
+    } catch (e) {
+        console.error(e)
+    }
 
     if (config["duty"] == 0) {
         fanEnable.checked = false;
-        fanSpeed.value = 0;
         fanSpeed.readOnly = true;
+        fanSpeed.type = "hidden";
+        fanSpeed.value = 0;
     } else {
         fanEnable.checked = true;
         fanSpeed.value = config["duty"];
         fanSpeed.readOnly = false;
     }
 
-    fanSpeedPer.textContent = Math.round((config["duty"] / 255) * 100) + "%";
+    let per = Math.round(fanSpeed.value * 100 / 255);
+    fanSpeedPer.textContent = `${fanSpeed.value} (${per} %)`;
 })();
