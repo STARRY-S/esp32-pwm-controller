@@ -33,6 +33,7 @@ static esp_err_t init_controller_config(struct config *config)
 	char *content = NULL;
 	int length = read_file(&content, DEFAULT_DUTY_CONFIG);
 	if (content == NULL) {
+		write_file(DEFAULT_DUTY_CONFIG, "0");
 		return ESP_FAIL;
 	}
 	int duty = 0;

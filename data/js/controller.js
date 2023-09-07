@@ -27,7 +27,7 @@ function httpGet(u) {
     });
     fanEnable.addEventListener("input", () => {
         if (fanEnable.checked) {
-            fanSpeed.value = 20;
+            fanSpeed.value = 30;
             fanSpeed.type = "range";
             let per = Math.round(fanSpeed.value * 100 / 255);
             fanSpeedPer.textContent = `${fanSpeed.value} (${per} %)`;

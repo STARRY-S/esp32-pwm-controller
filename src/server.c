@@ -182,7 +182,9 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 		return httpd_resp_send(req,
 "<!DOCTYPE html>\n"
 "<head>\n"
+"<link rel=\"stylesheet\" href=\"/css/styles.css\">\n"
 "<meta http-equiv=\"Refresh\" content=\"0; url='/controller'\" />\n"
+"<meta name=\"theme-color\" content=\"#2e2e2e\"/>\n"
 "</head>\n"
 "<body></body>\n",
 			-1);
