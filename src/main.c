@@ -15,9 +15,9 @@
 #include "controller.h"
 
 #define TAG "MAIN"
-#define WIFI_SSID "ESP32_WIFI"
+#define WIFI_SSID "FURSUIT_HEAD_CONTROL"
 #define WIFI_PASS "testpassword123"
-#define PWM_GPIO 12
+#define PWM_GPIO 25
 #define PWM_FREQ 25000
 
 void app_main()
