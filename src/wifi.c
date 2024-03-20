@@ -5,6 +5,8 @@
 #include <esp_mac.h>
 #include <esp_err.h>
 #include <esp_log.h>
+#include <esp_netif.h>
+#include <lwip/ip_addr.h>
 
 #define TAG "WIFI"
 
@@ -44,7 +46,7 @@ void init_wifi_softap(
 ) {
 	ESP_LOGI(TAG, "Start setting up WIFI");
 
-	esp_netif_create_default_wifi_ap();
+	esp_netif_t *wifi_ap = esp_netif_create_default_wifi_ap();
 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 	ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 	ESP_ERROR_CHECK(
@@ -81,4 +83,36 @@ void init_wifi_softap(
 	ESP_ERROR_CHECK(esp_wifi_start());
 	ESP_LOGI(TAG, "Finished to init WIFI:\nSSID:%s password:%s channel:%u",
 		ssid, password, channel);
+
+        // Restart DHCP server to set options.
+        ESP_ERROR_CHECK(esp_netif_dhcps_stop(wifi_ap));
+        // esp_ip4_addr_t route;
+        unsigned char buff = 0;
+        // Do not set default router to allow iPhone use cellular data when
+        // connected to this wifi server.
+        ESP_ERROR_CHECK(
+                esp_netif_dhcps_option(
+                        wifi_ap,
+                        ESP_NETIF_OP_SET,
+                        ESP_NETIF_ROUTER_SOLICITATION_ADDRESS,
+                        &buff,
+                        sizeof(buff)
+                )
+        );
+
+        // Set IP address.
+        esp_netif_ip_info_t info;
+	memset(&info, 0, sizeof(info));
+	IP4_ADDR(&info.ip, 10, 10, 0, 1);
+	IP4_ADDR(&info.gw, 10, 10, 0, 1);
+	IP4_ADDR(&info.netmask, 255, 255, 255, 0);
+	ESP_ERROR_CHECK(esp_netif_set_ip_info(wifi_ap, &info));
+
+        // Restart DHCP server to set options.
+        ESP_ERROR_CHECK(esp_netif_dhcps_start(wifi_ap));
+
+        // Set DNS Server address.
+        esp_netif_dns_info_t dns_info;
+        IP4_ADDR(&dns_info.ip.u_addr.ip4, 10, 10, 0, 1);
+	ESP_ERROR_CHECK(esp_netif_set_dns_info(wifi_ap, ESP_NETIF_DNS_MAIN, &dns_info));
 }

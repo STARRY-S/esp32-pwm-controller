@@ -6,7 +6,6 @@
 #include "controller.h"
 
 #define TAG "SERVER"
-#define MIN( a , b ) ( a < b ) ? ( a ) : ( b )
 
 #define EXAMPLE_HTTP_QUERY_KEY_MAX_LEN 64
 #define SCRATCH_BUFSIZE  8192
@@ -114,6 +113,7 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 			ESP_LOGI(TAG,
 				"Found URL query parameter => fan-enable=%s",
 				param);
+                        ESP_LOGI(TAG, "fan-enable: %s", buffer);
 			if (strcmp(param, "0") == 0) {
 				int ret = controller_set_pwm_duty(0);
 				if (ret != ESP_OK) {
@@ -140,16 +140,17 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 			}
 			if (duty > 255) {
 				ESP_LOGE(TAG, "duty outrange: %d", duty);
-			} else {
-				int ret = controller_set_pwm_duty(duty);
-				if (ret != ESP_OK) {
-					free(buffer);
-					buffer = NULL;
-					ESP_LOGE(TAG,
-						"failed to set duty: %d", ret);
-					break;
-				}
+				duty = 255;
 			}
+			int ret = controller_set_pwm_duty(duty);
+			if (ret != ESP_OK) {
+				free(buffer);
+				buffer = NULL;
+				ESP_LOGE(TAG,
+					"failed to set duty: %d", ret);
+				break;
+			}
+                        ESP_LOGI(TAG, "fan-speed: %d", duty);
 		}
 		if (httpd_query_key_value(
 			buffer, "getconfig", param, sizeof(param)) == 0) {
@@ -170,6 +171,7 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 				return ret;
 			}
 			ret = httpd_resp_send(req, buffer, -1);
+			ESP_LOGI(TAG, "getconfig: %s", buffer);
 			free(buffer);
 			return ret;
 		}

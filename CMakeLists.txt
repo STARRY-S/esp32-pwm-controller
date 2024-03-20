@@ -1,4 +1,4 @@
 cmake_minimum_required(VERSION 3.16.0)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(head-controll)
+project(esp32-c3-pwm-control)
 spiffs_create_partition_image(spiffs data)

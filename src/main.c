@@ -13,11 +13,12 @@
 #include "storage.h"
 #include "pwm.h"
 #include "controller.h"
+#include "config.h"
 
 #define TAG "MAIN"
 #define WIFI_SSID "FURSUIT_HEAD_CONTROL"
 #define WIFI_PASS "testpassword123"
-#define PWM_GPIO 25
+#define PWM_GPIO 4
 #define PWM_FREQ 25000
 
 void app_main()
@@ -31,6 +32,7 @@ void app_main()
 
 	httpd_handle_t *server = start_webserver(80);
 	while (server) {
+		get_controller_config();
 		sleep(5);
 	}
 }
