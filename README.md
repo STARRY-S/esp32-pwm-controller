@@ -1,11 +1,15 @@
-## ESP32-C3 PWM Fan Controller
+## ESP32 PWM Fan Controller
 
-This is an esp32-c3 PlatformIO `esp-idf` project.
+> WIP: **This project is under heavy development, the `main` is not stable yet!**
+
+This is an esp32 PlatformIO `esp-idf` project.
 
 PWM Fan WIFI remote controller, can be used for cooldown system.
+Available to use on esp32 & esp32c3.
+
 Just for fun.
 
-### Demo
+### Web-UI
 
 ![](images/1.png)
 
@@ -13,7 +17,9 @@ Just for fun.
 
 ----
 
-Currently the WIFI and PWM GPIO is hard-coded in [main.c](/src/main.c#L18). Editable configuration web UI interface will be added later.
+Currently, the WIFI and PWM GPIO are hard-coded in [main.c](/src/main.c#L18). 
+The editable configuration web UI interface is currently working in progress 
+and will be coming soon.
 
 ### LICENSE
 
