@@ -3,10 +3,21 @@
 
 #include <esp_err.h>
 
-#define DEFAULT_DUTY_CONFIG "/spiffs/config/duty.txt"
+/**
+ * @brief init_controller_config initializes the controller struct object.
+ *
+ * @return esp_err_t
+ */
+esp_err_t init_controller_config();
 
-void init_controller(uint8_t pwm_gpio, uint32_t frequency);
+/**
+ * @brief
+ *
+ * @param duty
+ * @return esp_err_t
+ */
 esp_err_t controller_set_pwm_duty(uint8_t duty);
+
 esp_err_t controller_get_pwm_duty(uint8_t *val);
 
 #endif

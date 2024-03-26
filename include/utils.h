@@ -1,6 +1,12 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <string.h>
+
+#include <esp_err.h>
+#include <esp_log.h>
+#include <esp_netif.h>
+
 /**
  * @brief str2int converts a non-negative string to int.
  *

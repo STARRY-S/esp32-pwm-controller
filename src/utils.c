@@ -1,6 +1,9 @@
 #include <string.h>
 #include <stdbool.h>
+#include <unistd.h>
+
 #include <esp_netif.h>
+#include <esp_log.h>
 
 #include "utils.h"
 
@@ -57,7 +60,7 @@ esp_ip4_addr_t str2ipv4(const char *const value)
 	if (value == NULL) {
 		return ip;
 	}
-	uint8_t num = 0;
+	uint32_t num = 0;
 	uint32_t addr = 0;
 	int length = strlen(value);
 	int count = 0;

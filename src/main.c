@@ -1,12 +1,6 @@
+#include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <esp_netif.h>
-#include <nvs_flash.h>
-#include <esp_log.h>
-#include <dirent.h>
-#include <esp_spiffs.h>
-#include <sys/stat.h>
 
 #include "server.h"
 #include "wifi.h"
@@ -14,25 +8,30 @@
 #include "pwm.h"
 #include "controller.h"
 #include "config.h"
+#include "utils.h"
 
 #define TAG "MAIN"
-#define WIFI_SSID "FURSUIT_HEAD_CONTROL"
-#define WIFI_PASS "testpassword123"
-#define PWM_GPIO 4
-#define PWM_FREQ 25000
 
 void app_main()
 {
-	ESP_ERROR_CHECK(nvs_flash_init());
-	ESP_ERROR_CHECK(esp_netif_init());
-	ESP_ERROR_CHECK(esp_event_loop_create_default());
-	init_wifi_softap(WIFI_SSID, 1, WIFI_PASS, 4);
-	init_spiffs_storage();
-	init_controller(PWM_GPIO, PWM_FREQ);
+	// Add some timeout before init esp32.
+	sleep(1);
+	printf("\n");
 
-	httpd_handle_t *server = start_webserver(80);
-	while (server) {
-		get_controller_config();
-		sleep(5);
+	ESP_ERROR_CHECK(esp_event_loop_create_default());
+	ESP_ERROR_CHECK(init_storage());
+
+	while (true) {
+		ESP_LOGI(TAG, "----------------------------");
+		struct config *config = new_config_by_load_file();
+		int ret = save_config_file(config);
+		if (ret != 0) {
+			ESP_LOGE(TAG, "failed to save config: %d", ret);
+		}
+		release_config(&config);
+		if (config != NULL) {
+			ESP_LOGE(TAG, "release_config failed");
+		}
+		sleep(1);
 	}
 }

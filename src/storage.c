@@ -1,16 +1,23 @@
 #include <esp_err.h>
 #include <esp_log.h>
-#include <esp_spiffs.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <nvs_flash.h>
+#include <esp_spiffs.h>
 
 #include "storage.h"
 
-#define TAG "SPIFFS"
+#define TAG "STORAGE"
 
-void init_spiffs_storage()
+esp_err_t init_storage()
 {
-	ESP_LOGI(TAG, "Start init spiff storage");
+	ESP_LOGD(TAG, "init_storage start");
+	esp_err_t ret = 0;
+	if ((ret = nvs_flash_init()) != ESP_OK) {
+		ESP_LOGE(TAG, "nvs_flash_init failed %d", ret);
+		return ret;
+	}
+
 	esp_vfs_spiffs_conf_t config = {
 		.base_path = "/spiffs",
 		.partition_label = NULL,
@@ -19,12 +26,20 @@ void init_spiffs_storage()
 	};
 	// Use settings defined above to initialize and mount SPIFFS filesystem.
 	// Note: esp_vfs_spiffs_register is an all-in-one convenience function.
-	ESP_ERROR_CHECK(esp_vfs_spiffs_register(&config));
+	if ((ret = esp_vfs_spiffs_register(&config)) != ESP_OK) {
+		ESP_LOGE(TAG, "esp_vfs_spiffs_register failed %d", ret);
+		return ret;
+	}
 
 	size_t total = 0, used = 0;
-	ESP_ERROR_CHECK(esp_spiffs_info(config.partition_label, &total, &used));
-	ESP_LOGI(TAG, "Spiff partition total: %d, used: %d", total, used);
-	ESP_LOGI(TAG, "Storage init finished");
+	ret = esp_spiffs_info(config.partition_label, &total, &used);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "esp_spiffs_info failed %d", ret);
+		return ret;
+	}
+	ESP_LOGI(TAG, "spiff partition total: %d, used: %d", total, used);
+	ESP_LOGI(TAG, "storage init finished");
+	return ESP_OK;
 }
 
 int read_file(char** content, const char *filename)
@@ -54,16 +69,16 @@ int read_file(char** content, const char *filename)
 		return 0;
 	}
 	fclose(fd);
-	ESP_LOGI(TAG, "read file: %s, size: %d", filename, size);
+	ESP_LOGD(TAG, "read file: %s, size: %d", filename, size);
 	return size;
 }
 
 int write_file(char *filename, char *content)
 {
 	FILE *fd = fopen(filename, "w");
-	fprintf(fd, "%s", content);
+	int ret = fprintf(fd, "%s", content);
 	fclose(fd);
-	return ESP_OK;
+	return ret;
 }
 
 bool is_regular_file(const char *filename)
