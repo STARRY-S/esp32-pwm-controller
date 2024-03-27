@@ -14,40 +14,35 @@ struct controller {
 	struct config *config;
 };
 
-static struct controller *controller = NULL;
+/**
+ * @brief global controller.
+ */
+static struct controller controller = {
+	.config = NULL,
+};
 
 bool controller_initialized()
 {
-	if (!controller) {
-		return false;
-	}
-	if (!controller->config) {
+	if (!is_valid_config(controller.config)) {
 		return false;
 	}
 	return true;
 }
 
-esp_err_t init_controller_config()
+esp_err_t init_controller()
 {
-	if (controller != NULL) {
-		release_config(&controller->config);
-		free(controller);
-		controller = NULL;
+	if (!controller_initialized()) {
+		// re-initialize controller config.
+		release_config(&controller.config);
 	}
-
-	controller = malloc(sizeof(struct controller));
-	if (controller == NULL) {
-		ESP_LOGE(TAG, "failed to init controller: malloc failed");
-		return ESP_FAIL;
-	}
-	memset(controller, 0, sizeof(struct controller));
+	memset(&controller, 0, sizeof(struct controller));
 
 	struct config *config = new_config_by_load_file();
 	if (config == NULL) {
-		ESP_LOGE(TAG, "init_controller_config failed");
+		ESP_LOGE(TAG, "init_controller failed");
 		return ESP_FAIL;
 	}
-	controller->config = config;
+	controller.config = config;
 
 	return ESP_OK;
 }
@@ -59,7 +54,14 @@ esp_err_t controller_set_pwm_fan_duty(uint8_t duty)
 		return ESP_FAIL;
 	}
 
-	controller->config->pwm_fan->duty = duty;
+	char buff[12] = {0};
+	sprintf(buff, "%u", duty);
+	int ret = config_set_value(
+		controller.config, CONFIG_KEY_PWM_FAN_DUTY, buff);
+	if (ret != 0) {
+		ESP_LOGE(TAG, "failed to set config pwm_fan duty: %d", ret);
+		return ret;
+	}
 	ESP_LOGI(TAG, "set PWM duty: %u", duty);
 	return ESP_OK;
 }
@@ -71,7 +73,14 @@ esp_err_t controller_get_pwm_fan_duty(uint8_t *val)
 		return ESP_FAIL;
 	}
 
-	*val = controller->config->pwm_fan->duty;
+	uint32_t v = 0;
+	int ret = config_get_value(
+		controller.config, CONFIG_KEY_PWM_FAN_DUTY, &v, sizeof(v));
+	if (ret != 0) {
+		ESP_LOGE(TAG, "failed to get config pwm_fan duty: %d", ret);
+		return ret;
+	}
+	*val = (uint8_t) v;
 	ESP_LOGI(TAG, "get PWM duty: %u", *val);
 	return ESP_OK;
 }

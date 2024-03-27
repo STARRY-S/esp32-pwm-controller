@@ -1,6 +1,7 @@
 #include <string.h>
-#include <esp_log.h>
 #include <stdbool.h>
+
+#include <esp_log.h>
 #include <esp_err.h>
 #include <esp_netif.h>
 
@@ -10,6 +11,54 @@
 
 #define TAG "CONFIG"
 #define BUFF_SIZE (128 * sizeof(char))
+
+/**
+ * @brief private PWM configuration.
+ */
+struct pwm_config {
+	uint8_t channel;    // PWM channel
+	uint32_t frequency; // PWM frequency
+	uint8_t gpio;       // GPIO pin
+	uint8_t duty;       // PWM duty (0-255)
+};
+
+/**
+ * @brief private WIFI configuration
+ */
+struct wifi_config {
+	char* ssid;      // Wifi SSID
+	char* password;  // Wifi password
+	uint8_t channel; // Wifi channel (1-11)
+};
+
+/**
+ * @brief private DHCP Server configuration
+ */
+struct dhcps_config {
+	esp_ip4_addr_t ip;      // Interface IPv4 addr
+	esp_ip4_addr_t netmask; // Interface netmask (default 255.255.255.0)
+
+	/**
+	 * @brief If the as_router is 0, the iPhone will still use cellular
+	 * data when connected to this WIFI.
+	 * If the as_router is set to 1, the iPhone will not use cellular
+	 * data when connected to this WIFI.
+	 * Only available for iPhone devices.
+	 */
+	uint8_t as_router;
+};
+
+/**
+ * @brief private config struct object.
+ * Use `config_set_value` to set value by key.
+ * Use `config_get_value` to get value by key.
+ */
+struct config {
+	struct pwm_config *pwm_fan; // Fan speed configuration
+	struct pwm_config *pwm_mos; // Fan power switch (or LED) configuration
+	struct wifi_config *wifi;   // WIFI configuration
+	struct dhcps_config *dhcps; // DHCP server configuration
+};
 
 /**
  * @brief new_config_by_config_file_data will parse the config file data,
@@ -49,52 +98,146 @@ esp_err_t save_config_file(struct config *config)
 		return ESP_FAIL;
 	}
 	char *buffer = malloc(BUFF_SIZE * 128);
-	memset(buffer, 0, BUFF_SIZE*128);
+	memset(buffer, 0, BUFF_SIZE * 128);
 
-	static const char * config_template =
-		"pwm_fan_channel=%u\n"
-		"pwm_fan_frequency=%u\n"
-		"pwm_fan_gpio=%u\n"
-		"pwm_fan_duty=%u\n"
-		"pwm_mos_channel=%u\n"
-		"pwm_mos_frequency=%u\n"
-		"pwm_mos_gpio=%u\n"
-		"pwm_mos_duty=%u\n"
-		"wifi_ssid=%s\n"
-		"wifi_password=%s\n"
-		"wifi_channel=%u\n"
-		"dhcps_ip="IPSTR"\n"
-		"dhcps_netmask="IPSTR"\n"
-		"dhcps_as_router=%u\n"
+	static const char* config_template =
+		CONFIG_KEY_PWM_FAN_CHANNEL"=%u\n"
+		CONFIG_KEY_PWM_FAN_FREQUENCY"=%u\n"
+		CONFIG_KEY_PWM_FAN_GPIO"=%u\n"
+		CONFIG_KEY_PWM_FAN_DUTY"=%u\n"
+		CONFIG_KEY_PWM_MOS_CHANNEL"=%u\n"
+		CONFIG_KEY_PWM_MOS_FREQUENCY"=%u\n"
+		CONFIG_KEY_PWM_MOS_GPIO"=%u\n"
+		CONFIG_KEY_PWM_MOS_DUTY"=%u\n"
+		CONFIG_KEY_WIFI_SSID"=%s\n"
+		CONFIG_KEY_WIFI_PASSWORD"=%s\n"
+		CONFIG_KEY_WIFI_CHANNEL"=%u\n"
+		CONFIG_KEY_DHCPS_IP"="IPSTR"\n"
+		CONFIG_KEY_DHCPS_NETMASK"="IPSTR"\n"
+		CONFIG_KEY_DHCPS_AS_ROUTER"=%u\n"
 		;
 
 	sprintf(buffer,
 		config_template,
-		config->pwm_fan->channel,
+		(unsigned int) config->pwm_fan->channel,
 		(unsigned int) config->pwm_fan->frequency,
-		config->pwm_fan->gpio,
-		config->pwm_fan->duty,
-		config->pwm_mos->channel,
+		(unsigned int) config->pwm_fan->gpio,
+		(unsigned int) config->pwm_fan->duty,
+		(unsigned int) config->pwm_mos->channel,
 		(unsigned int) config->pwm_mos->frequency,
-		config->pwm_mos->gpio,
-		config->pwm_mos->duty,
+		(unsigned int) config->pwm_mos->gpio,
+		(unsigned int) config->pwm_mos->duty,
 		config->wifi->ssid,
 		config->wifi->password,
 		config->wifi->channel,
 		IP2STR(&config->dhcps->ip),
 		IP2STR(&config->dhcps->netmask),
-		config->dhcps->as_router
+		(unsigned int) config->dhcps->as_router
 	);
 
 	ESP_LOGI(TAG, "save_config_file:\n%s", buffer);
 	int ret = write_file(CONFIG_FILE, buffer);
 	if (ret <= 0) {
 		ESP_LOGE(TAG, "save_config_file: write_file failed: %d", ret);
+		free(buffer);
+		return ret;
 	}
 	free(buffer);
-
 	return ESP_OK;
 }
+
+esp_err_t config_get_value(
+	struct config *config,
+	const char *key,
+	void* value,
+	int size
+) {
+	if (!is_valid_config(config)) {
+		ESP_LOGE(TAG, "config_get_value failed: invalid config");
+		return ESP_FAIL;
+	}
+	if (value == NULL) {
+		ESP_LOGE(TAG, "config_get_value failed: invalid value ptr");
+		return ESP_FAIL;
+	}
+	if (size < 4) {
+		ESP_LOGE(TAG, "config_get_value failed: size too small");
+		return ESP_FAIL;
+	}
+
+	uint32_t *pi = value;
+	char* ps = value;
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_CHANNEL) == 0) {
+		*pi = config->pwm_fan->channel;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_FREQUENCY) == 0) {
+		*pi = config->pwm_fan->frequency;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_GPIO) == 0) {
+		*pi = config->pwm_fan->gpio;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_DUTY) == 0) {
+		*pi = config->pwm_fan->duty;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_CHANNEL) == 0) {
+		*pi = config->pwm_mos->channel;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_FREQUENCY) == 0) {
+		*pi = config->pwm_mos->frequency;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_GPIO) == 0) {
+		*pi = config->pwm_mos->gpio;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_DUTY) == 0) {
+		*pi = config->pwm_mos->duty;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_WIFI_SSID) == 0) {
+		if (strlen(config->wifi->ssid) > size) {
+			ESP_LOGE(TAG, "config_get_value failed: "
+				"failed to get "CONFIG_KEY_WIFI_SSID": "
+				"size too small");
+			return ESP_FAIL;
+		}
+		strcpy(ps, config->wifi->ssid);
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_WIFI_PASSWORD) == 0) {
+		if (strlen(config->wifi->password) > size) {
+			ESP_LOGE(TAG, "config_get_value failed: "
+				"failed to get "CONFIG_KEY_WIFI_PASSWORD": "
+				"size too small");
+			return ESP_FAIL;
+		}
+		strcpy(ps, config->wifi->password);
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_WIFI_CHANNEL) == 0) {
+		*pi = config->wifi->channel;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_DHCPS_IP) == 0) {
+		*pi = config->dhcps->ip.addr;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_DHCPS_NETMASK) == 0) {
+		*pi = config->dhcps->netmask.addr;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_DHCPS_AS_ROUTER) == 0) {
+		*pi = config->dhcps->as_router;
+		return ESP_OK;
+	}
+	return ESP_FAIL;
+}
+
 
 bool is_valid_config(struct config *config)
 {
@@ -332,9 +475,9 @@ struct config* new_config_by_config_file_data(
 			memcpy(value, content + value_pos, i - value_pos);
 			value[i-value_pos] = '\0';
 			ESP_LOGD(TAG, "read key [%s] value [%s]", key, value);
-			int ret = config_set_key_value(config, key, value);\
+			int ret = config_set_value(config, key, value);\
 			if (ret != ESP_OK) {
-				ESP_LOGE(TAG, "config_set_key_value failed: "
+				ESP_LOGE(TAG, "config_set_value failed: "
 					"key %s, value %s", key, value);
 			}
 
@@ -347,106 +490,98 @@ struct config* new_config_by_config_file_data(
 	return config;
 }
 
-esp_err_t config_set_key_value(
+esp_err_t config_set_value(
 	struct config *config, const char *key, const char *value
 ){
 	if (config == NULL || key == NULL || value == NULL) {
-		ESP_LOGE(TAG, "config_set_key_value failed: config NULL ptr");
+		ESP_LOGE(TAG, "config_set_value failed: config NULL ptr");
 		return ESP_FAIL;
 	}
 	if (!config->dhcps || !config->pwm_fan || !config->wifi) {
-		ESP_LOGE(TAG, "config_set_key_value failed: config NULL ptr");
+		ESP_LOGE(TAG, "config_set_value failed: config NULL ptr");
 		return ESP_FAIL;
 	}
-	if (strcmp(key, "pwm_fan_channel") == 0) {
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_CHANNEL) == 0) {
 		int v = str2int(value);
 		if (v > 5) {
 			ESP_LOGE(TAG, "invalid PWM channel [%d], "
 				"set to default 0", v);
 			v = 0;
 		}
-		ESP_LOGD(TAG, "set config pwm_fan_channel %d", v);
 		config->pwm_fan->channel = v;
 		return 0;
 	}
-	if (strcmp(key, "pwm_fan_frequency") == 0) {
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_FREQUENCY) == 0) {
 		int v = str2int(value);
 		if (v > 100000 || v < 1000) {
 			ESP_LOGE(TAG, "invalid PWM frequency [%d], "
 				"set to default 25000", v);
 			v = 25000;
 		}
-		ESP_LOGD(TAG, "set config pwm_fan_frequency %d", v);
 		config->pwm_fan->frequency = v;
 		return 0;
 	}
-	if (strcmp(key, "pwm_fan_gpio") == 0) {
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_GPIO) == 0) {
 		int v = str2int(value);
 		if (v > 30 || v < 0) {
-			ESP_LOGE(TAG, "invalid pwm_fan_gpio [%d], "
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_PWM_FAN_GPIO" [%d], "
 				"set to default 4", v);
 			v = 4;
 		}
-		ESP_LOGD(TAG, "set config pwm_fan_gpio %d", v);
 		config->pwm_fan->gpio = v;
 		return 0;
 	}
-	if (strcmp(key, "pwm_fan_duty") == 0) {
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_DUTY) == 0) {
 		int v = str2int(value);
 		if (v > 254 || v < 0) {
-			ESP_LOGE(TAG, "invalid pwm_fan_duty [%d], "
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_PWM_FAN_DUTY" [%d], "
 				"set to default 100", v);
 			v = 100;
 		}
-		ESP_LOGD(TAG, "set config pwm_fan_duty %d", v);
 		config->pwm_fan->duty = v;
 		return 0;
 	}
-	if (strcmp(key, "pwm_mos_channel") == 0) {
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_CHANNEL) == 0) {
 		int v = str2int(value);
 		if (v > 5) {
 			ESP_LOGE(TAG, "invalid PWM mos channel [%d], "
 				"set to default 1", v);
 			v = 1;
 		}
-		ESP_LOGD(TAG, "set config pwm_mos_channel %d", v);
 		config->pwm_mos->channel = v;
 		return 0;
 	}
-	if (strcmp(key, "pwm_mos_frequency") == 0) {
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_FREQUENCY) == 0) {
 		int v = str2int(value);
 		if (v > 100000 || v < 1000) {
 			ESP_LOGE(TAG, "invalid PWM frequency [%d], "
 				"set to default 25000", v);
 			v = 25000;
 		}
-		ESP_LOGD(TAG, "set config pwm_mos_frequency %d", v);
 		config->pwm_mos->frequency = v;
 		return 0;
 	}
-	if (strcmp(key, "pwm_mos_gpio") == 0) {
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_GPIO) == 0) {
 		int v = str2int(value);
 		if (v > 30 || v < 0) {
-			ESP_LOGE(TAG, "invalid pwm_mos_gpio [%d], "
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_PWM_MOS_GPIO" [%d], "
 				"set to default 8", v);
 			v = 8;
 		}
-		ESP_LOGD(TAG, "set config pwm_mos_gpio %d", v);
 		config->pwm_mos->gpio = v;
 		return 0;
 	}
-	if (strcmp(key, "pwm_mos_duty") == 0) {
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_DUTY) == 0) {
 		int v = str2int(value);
 		if (v > 255 || v < 0) {
-			ESP_LOGE(TAG, "invalid pwm_mos_duty [%d], "
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_PWM_MOS_DUTY" [%d], "
 				"set to default 255", v);
 			v = 255;
 		}
-		ESP_LOGD(TAG, "set config pwm_mos_duty %d", v);
 		config->pwm_mos->duty = v;
 		return 0;
 	}
-	if (strcmp(key, "wifi_ssid") == 0) {
+	if (strcmp(key, CONFIG_KEY_WIFI_SSID) == 0) {
 		char *buffer = str_clone(value);
 		if (buffer == NULL) {
 			ESP_LOGE(TAG, "wifi_ssid failed: malloc failed");
@@ -457,10 +592,9 @@ esp_err_t config_set_key_value(
 			config->wifi->ssid = NULL;
 		}
 		config->wifi->ssid = buffer;
-		ESP_LOGD(TAG, "set config wifi_ssid %s", buffer);
 		return 0;
 	}
-	if (strcmp(key, "wifi_password") == 0) {
+	if (strcmp(key, CONFIG_KEY_WIFI_PASSWORD) == 0) {
 		char *buffer = str_clone(value);
 		if (buffer == NULL) {
 			ESP_LOGE(TAG, "wifi_password failed: malloc failed");
@@ -471,47 +605,45 @@ esp_err_t config_set_key_value(
 			config->wifi->password = NULL;
 		}
 		config->wifi->password = buffer;
-		ESP_LOGD(TAG, "set config wifi_password %s", buffer);
 		return 0;
 	}
-	if (strcmp(key, "wifi_channel") == 0) {
+	if (strcmp(key, CONFIG_KEY_WIFI_CHANNEL) == 0) {
 		int v = str2int(value);
 		if (v > 11 || v < 0) {
-			ESP_LOGE(TAG, "invalid wifi_channel [%d], "
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_WIFI_CHANNEL" [%d], "
 				"set to default 1", v);
 			v = 1;
 		}
-		ESP_LOGD(TAG, "set config wifi_channel %d", v);
 		config->wifi->channel = v;
 		return 0;
 	}
-	if (strcmp(key, "dhcps_ip") == 0) {
+	if (strcmp(key, CONFIG_KEY_DHCPS_IP) == 0) {
 		esp_ip4_addr_t ip = str2ipv4(value);
 		if (ip.addr == 0 || (ip.addr & 0xff0000ff) == 0) {
 			ip.addr = 0x010A0A0A; // 10.10.10.1
-			ESP_LOGE(TAG, "invalid dhcps_ip [%s], "
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_DHCPS_IP" [%s], "
 				"set to default: 0x%8X, "IPSTR,
 				value, (unsigned int) ip.addr, IP2STR(&ip));
 		}
-		ESP_LOGD(TAG, "set config dhcps_ip [0x%8X] "IPSTR,
+		ESP_LOGD(TAG, "set config "CONFIG_KEY_DHCPS_IP" [0x%8X] "IPSTR,
 			(unsigned int) ip.addr,  IP2STR(&ip));
 		config->dhcps->ip = ip;
 		return 0;
 	}
-	if (strcmp(key, "dhcps_netmask") == 0) {
+	if (strcmp(key, CONFIG_KEY_DHCPS_NETMASK) == 0) {
 		esp_ip4_addr_t ip = str2ipv4(value);
 		if (ip.addr == 0 || (ip.addr & 0x000000ff) == 0 ||
 			(ip.addr & 0x0f000000) > 0) {
 			ip.addr = 0x00ffffff; // 255.255.255.0
-			ESP_LOGE(TAG, "invalid dhcps_netmask [%s], "
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_DHCPS_NETMASK" [%s], "
 				"set to default "IPSTR, value, IP2STR(&ip));
 		}
-		ESP_LOGD(TAG, "set config dhcps_netmask [0x%8X] %s",
+		ESP_LOGD(TAG, "set config "CONFIG_KEY_DHCPS_NETMASK" [0x%8X] %s",
 			(unsigned int) ip.addr, value);
 		config->dhcps->netmask = ip;
 		return 0;
 	}
-	if (strcmp(key, "dhcps_as_router") == 0) {
+	if (strcmp(key, CONFIG_KEY_DHCPS_AS_ROUTER) == 0) {
 		int v = str2int(value);
 		if (v < 0 || v > 1) {
 			ESP_LOGE(TAG, "invalid dhcps_as_router [%d], "
@@ -523,7 +655,7 @@ esp_err_t config_set_key_value(
 		return 0;
 	}
 
-	ESP_LOGE(TAG, "config_set_key_value: unrecognized key [%s]", key);
+	ESP_LOGE(TAG, "config_set_value: unrecognized key [%s]", key);
 	return ESP_FAIL;
 }
 

@@ -4,11 +4,11 @@
 #include <esp_err.h>
 
 /**
- * @brief init_controller_config initializes the controller struct object.
+ * @brief init_controller initializes the private controller.
  *
  * @return esp_err_t
  */
-esp_err_t init_controller_config();
+esp_err_t init_controller();
 
 /**
  * @brief
