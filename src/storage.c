@@ -38,7 +38,7 @@ esp_err_t init_storage()
 		return ret;
 	}
 	ESP_LOGI(TAG, "spiff partition total: %d, used: %d", total, used);
-	ESP_LOGI(TAG, "storage init finished");
+	ESP_LOGD(TAG, "storage init finished");
 	return ESP_OK;
 }
 

@@ -6,8 +6,11 @@
 #include "controller.h"
 
 #define TAG "SERVER"
+#define HTTP_SERVER_PORT 80
+#ifndef MIN
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+#endif
 
-#define EXAMPLE_HTTP_QUERY_KEY_MAX_LEN 64
 #define SCRATCH_BUFSIZE  8192
 
 #define IS_FILE_EXT(filename, ext) \
@@ -16,6 +19,7 @@
 struct http_context {
 	char base_path[16];
 	char scratch[SCRATCH_BUFSIZE];
+	struct config *config;
 };
 
 /* Set HTTP response content type according to file extension */
@@ -77,8 +81,8 @@ static esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
 	if (!buffer) {
 		httpd_resp_send_err(
 			req,
-			HTTPD_500_INTERNAL_SERVER_ERROR,
-			"failed to open '404.html'"
+			HTTPD_404_NOT_FOUND,
+			"<h1>404 NOT FOUND</h1>"
 		);
 		return ESP_FAIL;
 	}
@@ -115,11 +119,11 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 				param);
                         ESP_LOGI(TAG, "fan-enable: %s", buffer);
 			if (strcmp(param, "0") == 0) {
-				int ret = controller_set_pwm_duty(0);
-				if (ret != ESP_OK) {
-					ESP_LOGE(TAG,
-						"failed to set duty: %d", ret);
-				}
+				// int ret = controller_set_pwm_fan_duty(0);
+				// if (ret != ESP_OK) {
+				// 	ESP_LOGE(TAG,
+				// 		"failed to set duty: %d", ret);
+				// }
 				free(buffer);
 				buffer = NULL;
 				break;
@@ -142,14 +146,14 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 				ESP_LOGE(TAG, "duty outrange: %d", duty);
 				duty = 255;
 			}
-			int ret = controller_set_pwm_duty(duty);
-			if (ret != ESP_OK) {
-				free(buffer);
-				buffer = NULL;
-				ESP_LOGE(TAG,
-					"failed to set duty: %d", ret);
-				break;
-			}
+			// int ret = controller_set_pwm_fan_duty(duty);
+			// if (ret != ESP_OK) {
+			// 	free(buffer);
+			// 	buffer = NULL;
+			// 	ESP_LOGE(TAG,
+			// 		"failed to set duty: %d", ret);
+			// 	break;
+			// }
                         ESP_LOGI(TAG, "fan-speed: %d", duty);
 		}
 		if (httpd_query_key_value(
@@ -158,12 +162,13 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 			buffer = NULL;
 
 			uint8_t duty = 0;
-			int ret = controller_get_pwm_duty(&duty);
-			if (ret != ESP_OK) {
-				ESP_LOGE(TAG,
-					"failed to get duty: %d", ret);
-				break;
-			}
+			int ret = 0;
+			// int ret = controller_get_pwm_fan_duty(&duty);
+			// if (ret != ESP_OK) {
+			// 	ESP_LOGE(TAG,
+			// 		"failed to get duty: %d", ret);
+			// 	break;
+			// }
 			buffer = malloc(sizeof(char) * 128);
 			sprintf(buffer, "{\"duty\":%u}", duty);
 			ret = httpd_resp_set_type(req, "application/json");
@@ -184,12 +189,11 @@ static esp_err_t http_controller_handler(httpd_req_t *req)
 		return httpd_resp_send(req,
 "<!DOCTYPE html>\n"
 "<head>\n"
-"<link rel=\"stylesheet\" href=\"/css/styles.css\">\n"
-"<meta http-equiv=\"Refresh\" content=\"0; url='/controller'\" />\n"
-"<meta name=\"theme-color\" content=\"#2e2e2e\"/>\n"
+"<link rel='stylesheet' href='/css/styles.css'>\n"
+"<meta http-equiv='Refresh' content=\"0; url='/controller'\" />\n"
 "</head>\n"
 "<body></body>\n",
-			-1);
+			HTTPD_RESP_USE_STRLEN);
 	}
 
 	char *content = NULL;
@@ -214,7 +218,8 @@ static esp_err_t http_default_handler(httpd_req_t *req)
 {
 	static char buffer[1024];
 	esp_err_t ret = ESP_OK;
-	char filepath[128] = "";
+	static char filepath[CONFIG_HTTPD_MAX_URI_LEN] = { 0 };
+	memset(filepath, 0, CONFIG_HTTPD_MAX_URI_LEN * sizeof(char));
 	struct http_context *context = req->user_ctx;
 	const char *filename = get_path_from_uri(
 		filepath,
@@ -225,8 +230,8 @@ static esp_err_t http_default_handler(httpd_req_t *req)
 	if (!filename) {
 		httpd_resp_send_err(
 			req,
-			HTTPD_500_INTERNAL_SERVER_ERROR,
-			"FILENAME TOO LONG"
+			HTTPD_414_URI_TOO_LONG,
+			"URI TOO LONG"
 		);
 		return ESP_FAIL;
 	}
@@ -277,50 +282,82 @@ static esp_err_t http_default_handler(httpd_req_t *req)
 	return ret;
 }
 
-httpd_handle_t start_webserver(uint16_t port)
+httpd_uri_t* default_get_handler(struct config *config)
 {
-	httpd_handle_t server = NULL;
-	httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-	config.lru_purge_enable = true;
-	config.server_port = port;
+	static struct http_context *http_context = NULL;
+	static httpd_uri_t *http_get_handler = NULL;
+	if (http_context && http_get_handler) {
+		return http_get_handler;
+	}
+
+	http_context = malloc(sizeof(struct http_context));
+	http_get_handler = malloc(sizeof(httpd_uri_t));
+	memset(http_context, 0, sizeof(struct http_context));
+	memset(http_get_handler, 0, sizeof(httpd_uri_t));
+	strcpy(http_context->base_path, "/spiffs");
+
+	http_context->config = config;
+	http_get_handler->uri = "/*";
+	http_get_handler->method = HTTP_GET;
+	http_get_handler->handler = http_default_handler;
+	http_get_handler->user_ctx = http_context;
+	return http_get_handler;
+}
+
+esp_err_t start_default_http_server(
+	httpd_handle_t *handle,
+	struct config *config
+) {
+	if (!handle || !config) {
+		ESP_LOGE(TAG, "start_default_http_server: param is NULL");
+		return ESP_FAIL;
+	}
+	httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
+	http_config.lru_purge_enable = true;
+	http_config.server_port = HTTP_SERVER_PORT;
 
 	/*
 	 * Use the URI wildcard matching function in order to
 	 * allow the same handler to respond to multiple different
 	 * target URIs which match the wildcard scheme
 	 */
-	config.uri_match_fn = httpd_uri_match_wildcard;
-
-	// Start the httpd server
-	ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
-	if (httpd_start(&server, &config) != ESP_OK) {
-		ESP_LOGE(TAG, "Error starting server!");
-		return NULL;
+	http_config.uri_match_fn = httpd_uri_match_wildcard;
+	int ret = 0;
+	httpd_handle_t server = NULL;
+	ret = httpd_start(&server, &http_config);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "controller_start_server: httpd_start failed: "
+			"[%d]", ret);
+		return ret;
 	}
 
-	// Set URI handlers
-	ESP_LOGI(TAG, "Registering URI handlers");
-	static struct http_context context = {
-		.base_path = "/spiffs"
-	};
-	static httpd_uri_t get_handler = {
-		.uri = "/*",
-		.method = HTTP_GET,
-		.handler = http_default_handler,
-		.user_ctx = &context
-	};
-	ESP_ERROR_CHECK(httpd_register_uri_handler(server, &get_handler));
-	ESP_ERROR_CHECK(
-		httpd_register_err_handler(
-			server, HTTPD_404_NOT_FOUND, http_404_error_handler
-		)
+	httpd_uri_t *http_get_handler = default_get_handler(config);
+	ESP_LOGD(TAG, "register default handler for server");
+	ret = httpd_register_uri_handler(server, http_get_handler);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "controller_start_server: "
+			"httpd_register_uri_handler failed: [%d]", ret);
+		httpd_stop(server);
+		return ret;
+	}
+	ESP_LOGD(TAG, "register error handler for server");
+	ret = httpd_register_err_handler(
+		server, HTTPD_404_NOT_FOUND, http_404_error_handler
 	);
-	ESP_LOGI(TAG, "Web server started");
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "controller_start_server: "
+			"httpd_register_err_handler failed: [%d]", ret);
+		httpd_stop(server);
+		return ret;
+	}
+	ESP_LOGI(TAG, "started controller server on port [%u]",
+		(unsigned int) http_config.server_port);
 
-	return server;
+	*handle = server;
+ 	return ESP_OK;
 }
 
-esp_err_t stop_webserver(httpd_handle_t server)
+esp_err_t stop_default_http_server(httpd_handle_t h)
 {
-	return httpd_stop(server);
+	return httpd_stop(h);
 }

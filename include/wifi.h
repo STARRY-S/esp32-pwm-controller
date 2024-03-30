@@ -2,12 +2,8 @@
 #define WIFI_H
 
 #include <string.h>
+#include "config.h"
 
-void init_wifi_softap(
-	const char *ssid,
-	uint8_t channel,
-	const char *password,
-	uint8_t max_connection
-);
+esp_err_t init_controller_wifi_softap(struct config *);
 
 #endif

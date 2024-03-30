@@ -4,20 +4,59 @@
 #include <esp_err.h>
 
 /**
- * @brief init_controller initializes the private controller.
- *
- * @return esp_err_t
+ * @brief private controller struct object.
  */
-esp_err_t init_controller();
+struct controller;
 
 /**
- * @brief
+ * @brief detect whether the controller obj is initialized or not.
  *
- * @param duty
+ * @param c
+ * @return bool
+ */
+bool controller_initialized(struct controller *c);
+
+/**
+ * @brief init_global_controller initializes a global controller.
+ *
  * @return esp_err_t
  */
-esp_err_t controller_set_pwm_duty(uint8_t duty);
+esp_err_t init_global_controller();
 
-esp_err_t controller_get_pwm_duty(uint8_t *val);
+/**
+ * @brief get the global controller object.
+ *
+ * @return struct controller*
+ */
+struct controller *get_global_controller();
+
+/**
+ * @brief start the global controller.
+ *
+ * @return esp_err_t
+ */
+esp_err_t global_controller_start();
+
+/**
+ * @brief get if the global controller is running.
+ *
+ * @return bool
+ */
+bool is_global_controller_running();
+
+/**
+ * @brief global_controller_poll_events is the main loop
+ *
+ * @return true
+ * @return false
+ */
+bool global_controller_poll_events();
+
+/**
+ * @brief stop the global controller.
+ *
+ * @return esp_err_t
+ */
+esp_err_t global_controller_stop();
 
 #endif

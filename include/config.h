@@ -1,5 +1,7 @@
-#ifndef CONDIF_H
+#ifndef CONFIG_H
 #define CONFIG_H
+
+#include <esp_netif.h>
 
 /**
  * @brief config key definitions.
@@ -21,6 +23,42 @@
 #define CONFIG_KEY_DHCPS_AS_ROUTER 	"dhcps_as_router"
 
 /**
+ * @brief PWM configuration.
+ */
+struct pwm_config {
+	uint8_t channel;    // PWM channel
+	uint32_t frequency; // PWM frequency
+	uint8_t gpio;       // GPIO pin
+	uint8_t duty;       // PWM duty (0-255)
+};
+
+/**
+ * @brief WIFI configuration
+ */
+struct wifi_config {
+	char* ssid;      // Wifi SSID
+	char* password;  // Wifi password
+	uint8_t channel; // Wifi channel (1-11)
+};
+
+/**
+ * @brief DHCP Server configuration
+ */
+struct dhcps_config {
+	esp_ip4_addr_t ip;      // Interface IPv4 addr
+	esp_ip4_addr_t netmask; // Interface netmask (default 255.255.255.0)
+
+	/**
+	 * @brief If the as_router is 0, the iPhone will still use cellular
+	 * data when connected to this WIFI.
+	 * If the as_router is set to 1, the iPhone will not use cellular
+	 * data when connected to this WIFI.
+	 * Only available for iPhone devices.
+	 */
+	uint8_t as_router;
+};
+
+/**
  * @brief config struct object.
  * Use `new_config_by_load_file` to create config obj from config file.
  * Use `config_set_value` to set value by key.
@@ -28,12 +66,23 @@
  * Use `save_config_file` to save the config obj to config file.
  * Use `release_config` to release the config obj.
  */
-struct config;
+struct config {
+	struct pwm_config *pwm_fan; // Fan speed configuration
+	struct pwm_config *pwm_mos; // Fan power switch (or LED) configuration
+	struct wifi_config *wifi;   // WIFI configuration
+	struct dhcps_config *dhcps; // DHCP server configuration
+};
 
 /**
  * @brief CONFIG_FILE defines the default config file path.
  */
 #define CONFIG_FILE "/spiffs/config/config.cfg"
+
+/**
+ * @brief CONFIG_JSON_TEMPLATE_FILE defines the default config json
+ * marshal template
+ */
+#define CONFIG_JSON_TEMPLATE_FILE "/spiffs/config/config_template.json"
 
 /**
  * @brief new_config_by_load_file builds config struct object from the default
@@ -95,6 +144,15 @@ esp_err_t config_get_value(
 );
 
 /**
+ * @brief
+ *
+ * @param config
+ * @param data
+ * @return esp_err_t
+ */
+esp_err_t config_marshal_json(struct config *config, char* data);
+
+/**
  * @brief release_config release config allocated memory.
  * The config pointer will be set to NULL after release.
  *
@@ -102,4 +160,4 @@ esp_err_t config_get_value(
  */
 void release_config(struct config **p);
 
-#endif // CONDIF_H
+#endif // CONFIG_H

@@ -3,7 +3,6 @@
 
 #include <esp_log.h>
 #include <esp_err.h>
-#include <esp_netif.h>
 
 #include "config.h"
 #include "storage.h"
@@ -11,54 +10,6 @@
 
 #define TAG "CONFIG"
 #define BUFF_SIZE (128 * sizeof(char))
-
-/**
- * @brief private PWM configuration.
- */
-struct pwm_config {
-	uint8_t channel;    // PWM channel
-	uint32_t frequency; // PWM frequency
-	uint8_t gpio;       // GPIO pin
-	uint8_t duty;       // PWM duty (0-255)
-};
-
-/**
- * @brief private WIFI configuration
- */
-struct wifi_config {
-	char* ssid;      // Wifi SSID
-	char* password;  // Wifi password
-	uint8_t channel; // Wifi channel (1-11)
-};
-
-/**
- * @brief private DHCP Server configuration
- */
-struct dhcps_config {
-	esp_ip4_addr_t ip;      // Interface IPv4 addr
-	esp_ip4_addr_t netmask; // Interface netmask (default 255.255.255.0)
-
-	/**
-	 * @brief If the as_router is 0, the iPhone will still use cellular
-	 * data when connected to this WIFI.
-	 * If the as_router is set to 1, the iPhone will not use cellular
-	 * data when connected to this WIFI.
-	 * Only available for iPhone devices.
-	 */
-	uint8_t as_router;
-};
-
-/**
- * @brief private config struct object.
- * Use `config_set_value` to set value by key.
- * Use `config_get_value` to get value by key.
- */
-struct config {
-	struct pwm_config *pwm_fan; // Fan speed configuration
-	struct pwm_config *pwm_mos; // Fan power switch (or LED) configuration
-	struct wifi_config *wifi;   // WIFI configuration
-	struct dhcps_config *dhcps; // DHCP server configuration
-};
 
 /**
  * @brief new_config_by_config_file_data will parse the config file data,
@@ -242,105 +193,105 @@ esp_err_t config_get_value(
 bool is_valid_config(struct config *config)
 {
 	if (!config) {
-		ESP_LOGE(TAG, "is_valid_config: config is NULL");
+		ESP_LOGD(TAG, "is_valid_config: config is NULL");
 		return false;
 	}
 	if (!config->pwm_fan) {
-		ESP_LOGE(TAG, "is_valid_config: pwm_fan is NULL");
+		ESP_LOGD(TAG, "is_valid_config: pwm_fan is NULL");
 		return false;
 	}
 	if (config->pwm_fan->channel > 30) {
-		ESP_LOGE(TAG, "is_valid_config: pwm_fan->channel: "
+		ESP_LOGD(TAG, "is_valid_config: pwm_fan->channel: "
 			"invalid value");
 		return false;
 	}
 	if (config->pwm_fan->frequency > 100000 ||
 		config->pwm_fan->frequency < 1000) {
-		ESP_LOGE(TAG, "is_valid_config: pwm_fan->frequency: "
+		ESP_LOGD(TAG, "is_valid_config: pwm_fan->frequency: "
 			"invalid value");
 		return false;
 	}
 	if (config->pwm_fan->gpio > 30) {
-		ESP_LOGE(TAG, "is_valid_config: pwm_fan->gpio: "
+		ESP_LOGD(TAG, "is_valid_config: pwm_fan->gpio: "
 			"invalid value");
 		return false;
 	}
 	// config->pwm_fan->duty will always been 0-255.
 
 	if (!config->pwm_mos) {
-		ESP_LOGE(TAG, "is_valid_config: pwm_mos is NULL");
+		ESP_LOGD(TAG, "is_valid_config: pwm_mos is NULL");
 		return false;
 	}
 	if (config->pwm_mos->channel > 30) {
-		ESP_LOGE(TAG, "is_valid_config: pwm_mos->channel: "
+		ESP_LOGD(TAG, "is_valid_config: pwm_mos->channel: "
 			"invalid value");
 		return false;
 	}
 	if (config->pwm_mos->frequency > 100000 ||
 		config->pwm_mos->frequency < 1000) {
-		ESP_LOGE(TAG, "is_valid_config: pwm_mos->frequency: "
+		ESP_LOGD(TAG, "is_valid_config: pwm_mos->frequency: "
 			"invalid value");
 		return false;
 	}
 	if (config->pwm_mos->gpio > 30) {
-		ESP_LOGE(TAG, "is_valid_config: pwm_mos->gpio: "
+		ESP_LOGD(TAG, "is_valid_config: pwm_mos->gpio: "
 			"invalid value");
 		return false;
 	}
 	// config->pwm_mos->duty will always been 0-255.
 
 	if (!config->wifi) {
-		ESP_LOGE(TAG, "is_valid_config: wifi is NULL");
+		ESP_LOGD(TAG, "is_valid_config: wifi is NULL");
 		return false;
 	}
 	if (!config->wifi->password) {
-		ESP_LOGE(TAG, "is_valid_config: wifi->password is NULL");
+		ESP_LOGD(TAG, "is_valid_config: wifi->password is NULL");
 		return false;
 	}
 	const char* p = config->wifi->password;
 	int len = strlen(p);
 	if (len > 30 || len < 8) {
-		ESP_LOGE(TAG, "is_valid_config: wifi->password: "
+		ESP_LOGD(TAG, "is_valid_config: wifi->password: "
 			"invalid password length");
 	}
 	for (int i = 0; p[i] != '\0'; i++) {
 		if (is_valid_config_value(p[i])) {
 			continue;
 		}
-		ESP_LOGE(TAG, "is_valid_config: wifi->password: "
+		ESP_LOGD(TAG, "is_valid_config: wifi->password: "
 			"invalid char [%c]", p[i]);
 		return false;
 	}
 	if (!config->wifi->ssid) {
-		ESP_LOGE(TAG, "is_valid_config: wifi->ssid is NULL");
+		ESP_LOGD(TAG, "is_valid_config: wifi->ssid is NULL");
 		return false;
 	}
 	p = config->wifi->ssid;
 	len = strlen(p);
 	if (len > 30 || len < 1) {
-		ESP_LOGE(TAG, "is_valid_config: wifi->ssid: "
+		ESP_LOGD(TAG, "is_valid_config: wifi->ssid: "
 			"invalid ssid length");
 	}
 	for (int i = 0; p[i] != '\0'; i++) {
 		if (is_valid_config_value(p[i])) {
 			continue;
 		}
-		ESP_LOGE(TAG, "is_valid_config: wifi->ssid: "
+		ESP_LOGD(TAG, "is_valid_config: wifi->ssid: "
 			"invalid char [%c]", p[i]);
 		return false;
 	}
 	if (!config->dhcps) {
-		ESP_LOGE(TAG, "is_valid_config: dhcps is NULL");
+		ESP_LOGD(TAG, "is_valid_config: dhcps is NULL");
 		return false;
 	}
 	if ((config->dhcps->ip.addr & 0x000000ff) == 0) { // 255.0.0.0
-		ESP_LOGE(TAG, "is_valid_config: dhcps->ip: "
+		ESP_LOGD(TAG, "is_valid_config: dhcps->ip: "
 			"invalid value");
 		return false;
 	}
 	if ((config->dhcps->netmask.addr & 0x000000ff) == 0 || // 255.0.0.0
 		(config->dhcps->netmask.addr & 0xff000000) > 0) { // 0.0.0.255
-		ESP_LOGE(TAG, "is_valid_config: dhcps->ip: "
+		ESP_LOGD(TAG, "is_valid_config: dhcps->ip: "
 			"invalid value");
 		return false;
 	}
@@ -657,6 +608,44 @@ esp_err_t config_set_value(
 
 	ESP_LOGE(TAG, "config_set_value: unrecognized key [%s]", key);
 	return ESP_FAIL;
+}
+
+esp_err_t config_marshal_json(struct config *config, char* data)
+{
+	if (!is_valid_config(config)) {
+		ESP_LOGE(TAG, "config_marshal_json: invalid config");
+		return ESP_FAIL;
+	}
+	if (data == NULL) {
+		ESP_LOGE(TAG, "config_marshal_json: invalid param");
+		return ESP_FAIL;
+	}
+
+	char *template = NULL;
+	if (read_file(&template, CONFIG_JSON_TEMPLATE_FILE) == 0) {
+		ESP_LOGE(TAG, "config_marshal_json: failed to read "
+			CONFIG_JSON_TEMPLATE_FILE);
+		free(template);
+		return ESP_FAIL;
+	}
+	sprintf(data, template,
+		(unsigned int) config->pwm_fan->channel,
+		(unsigned int) config->pwm_fan->frequency,
+		(unsigned int) config->pwm_fan->gpio,
+		(unsigned int) config->pwm_fan->duty,
+		(unsigned int) config->pwm_mos->channel,
+		(unsigned int) config->pwm_mos->frequency,
+		(unsigned int) config->pwm_mos->gpio,
+		(unsigned int) config->pwm_mos->duty,
+		config->wifi->ssid,
+		config->wifi->password,
+		(unsigned int) config->wifi->channel,
+		IP2STR(&config->dhcps->ip),
+		IP2STR(&config->dhcps->netmask),
+		(unsigned int) config->dhcps->as_router
+	);
+	free(template);
+	return ESP_OK;
 }
 
 void release_config(struct config **p) {

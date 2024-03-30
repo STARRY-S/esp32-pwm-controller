@@ -1,0 +1,24 @@
+{
+    "pwm_fan": {
+        "channel": "%u",
+        "frequency": "%u",
+        "gpio": "%u",
+        "duty": "%u"
+    },
+    "pwm_mos": {
+        "channel": "%u",
+        "frequency": "%u",
+        "gpio": "%u",
+        "duty": "%u"
+    },
+    "wifi": {
+        "ssid": "%s",
+        "password": "%s",
+        "channel": "%u"
+    },
+    "dhcps": {
+        "ip": "%d.%d.%d.%d",
+        "netmask": "%d.%d.%d.%d",
+        "as_router": "%u"
+    }
+}
