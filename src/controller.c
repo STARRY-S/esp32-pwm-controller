@@ -19,7 +19,7 @@ static int default_controller_stop(struct controller*);
 static int default_controller_save_config(struct controller*);
 static int default_controller_update_config(
 	struct controller*, const char*, const char *);
-static int default_controller_update_pwm_duty(struct controller*);
+static int default_controller_apply_pwm_duty(struct controller*);
 
 /**
  * @brief PWM Fan controller struct object.
@@ -99,7 +99,7 @@ esp_err_t init_global_controller()
 	controller->stop_server = default_controller_stop;
 	controller->update_config = default_controller_update_config;
 	controller->save_config = default_controller_save_config;
-	controller->apply_pwm_duty = default_controller_update_pwm_duty;
+	controller->apply_pwm_duty = default_controller_apply_pwm_duty;
 
 	return ESP_OK;
 }
@@ -115,57 +115,13 @@ esp_err_t global_controller_start()
 		ESP_LOGE(TAG, "global_controller_start: not initialized");
 		return ESP_FAIL;
 	}
-	int ret = 0;
 
-	// Start wifi AP & dhcp server.
-	if ((ret = init_controller_wifi_softap(controller->config)) != 0) {
-		return ret;
-	}
 	// Start web server.
+	int ret = 0;
 	if ((ret = controller->start_server(controller)) != 0) {
 		ESP_LOGE(TAG, "global_controller_start: "
 			"failed to start web server: [%d]", ret);
 		return ret;
-	}
-
-	// Init PWM for fan.
-	ret = init_controller_pwm(
-		controller->config->pwm_fan->gpio,
-		controller->config->pwm_fan->channel,
-		DEFAULT_PWM_FAN_TIMER,
-		controller->config->pwm_fan->frequency);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "global_controller_start: "
-			"init_controller_pwm for pwm_fan: [%d]", ret);
-		return ESP_FAIL;
-	}
-	ret = controller_pwm_set_duty(
-		controller->config->pwm_fan->channel,
-		controller->config->pwm_fan->duty);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "global_controller_start: "
-			"controller_pwm_set_duty for pwm_fan: [%d]", ret);
-		return ESP_FAIL;
-	}
-
-	// Init PWM for MOS (LED).
-	ret = init_controller_pwm(
-		controller->config->pwm_mos->gpio,
-		controller->config->pwm_mos->channel,
-		DEFAULT_PWM_MOS_TIMER,
-		controller->config->pwm_mos->frequency);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "global_controller_start: "
-			"init_controller_pwm for pwm_mos: [%d]", ret);
-		return ESP_FAIL;
-	}
-	ret = controller_pwm_set_duty(
-		controller->config->pwm_mos->channel,
-		controller->config->pwm_mos->duty);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "global_controller_start: "
-			"controller_pwm_set_duty for pwm_mos: [%d]", ret);
-		return ESP_FAIL;
 	}
 
 	return ESP_OK;
@@ -179,15 +135,40 @@ bool is_global_controller_running()
 	return controller->server_handle != NULL;
 }
 
-bool global_controller_poll_events()
+bool global_controller_main_loop()
 {
 	if (!is_global_controller_running()) {
 		return false;
 	}
-	// sleep 50000 us (0.05s, 50ms).
+	// sleep 100000 us (0.1s, 100ms).
 	usleep(50000);
 
 	return true;
+}
+
+esp_err_t global_controller_apply_pwm_duty()
+{
+	if (!controller_initialized(controller)) {
+		ESP_LOGE(TAG,
+			"global_controller_apply_pwm_duty: not initialized");
+		return ESP_FAIL;
+	}
+	return controller->apply_pwm_duty(controller);
+}
+
+esp_err_t global_controller_update_config(const char* k, const char* v)
+{
+	if (!controller_initialized(controller)) {
+		ESP_LOGE(TAG,
+			"global_controller_apply_pwm_duty: not initialized");
+		return ESP_FAIL;
+	}
+	return controller->update_config(controller, k, v);
+}
+
+esp_err_t global_controller_config_marshal_json(char *data)
+{
+	return config_marshal_json(controller->config, data);
 }
 
 esp_err_t global_controller_stop()
@@ -227,8 +208,63 @@ static int default_controller_start(struct controller* c)
 		ESP_LOGE(TAG, "default_controller_start: invalid param");
 		return ESP_FAIL;
 	}
+
+	int ret = 0;
+
+	// start wifi soft AP & dhcp server.
+	ESP_LOGI(TAG, "start default wifi soft AP");
+	if ((ret = init_controller_wifi_softap(controller->config)) != 0) {
+		return ret;
+	}
+
 	ESP_LOGI(TAG, "start default http web server");
-	return start_default_http_server(&c->server_handle, c->config);
+	ret = start_default_http_server(&c->server_handle, c->config);
+	if (ret != 0) {
+		ESP_LOGE(TAG, "start_default_http_server failed: [%d]", ret);
+		return ret;
+	}
+
+	// init PWM for fan.
+	ret = init_controller_pwm(
+		controller->config->pwm_fan->gpio,
+		controller->config->pwm_fan->channel,
+		DEFAULT_PWM_FAN_TIMER,
+		controller->config->pwm_fan->frequency);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "init_controller_pwm for pwm_fan failed: "
+			"[%d]", ret);
+		return ret;
+	}
+	ret = controller_pwm_set_duty(
+		controller->config->pwm_fan->channel,
+		controller->config->pwm_fan->duty);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "controller_pwm_set_duty for pwm_fan failed: "
+			"[%d]", ret);
+		return ret;
+	}
+
+	// init PWM for MOSFET (or LED).
+	ret = init_controller_pwm(
+		controller->config->pwm_mos->gpio,
+		controller->config->pwm_mos->channel,
+		DEFAULT_PWM_MOS_TIMER,
+		controller->config->pwm_mos->frequency);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "init_controller_pwm for pwm_mos failed: "
+			"[%d]", ret);
+		return ret;
+	}
+	ret = controller_pwm_set_duty(
+		controller->config->pwm_mos->channel,
+		controller->config->pwm_mos->duty);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "controller_pwm_set_duty for pwm_mos failed: "
+			"[%d]", ret);
+		return ret;
+	}
+
+	return ESP_OK;
 }
 
 static int default_controller_stop(struct controller* c)
@@ -237,9 +273,15 @@ static int default_controller_stop(struct controller* c)
 		// server already stopped.
 		return ESP_OK;
 	}
+	ESP_LOGI(TAG, "controller server will restart");
 	int ret = 0;
+	if ((ret = save_config_file(c->config)) != 0) {
+		ESP_LOGW(TAG, "default_controller_stop: "
+			"save_config_file: [%d]", ret);
+	}
 	if ((ret = stop_default_http_server(c->server_handle)) != 0) {
-		return ret;
+		ESP_LOGW(TAG, "default_controller_stop: "
+			"failed to stop http server: [%d]", ret);
 	}
 	c->server_handle = NULL;
 	return ESP_OK;
@@ -256,8 +298,22 @@ static int default_controller_update_config(
 	return config_set_value(c->config, k, v);
 }
 
-static int default_controller_update_pwm_duty(struct controller*)
-{
-	// Update PWM fan speed without reboot.
+static int default_controller_apply_pwm_duty(struct controller* c) {
+	// Update fan PWM duty & MOSFET duty without reboot.
+	int ret = 0;
+	ret = controller_pwm_set_duty(
+		c->config->pwm_fan->channel, c->config->pwm_fan->duty);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "controller_pwm_set_duty for pwm_fan failed: "
+			"[%d]", ret);
+		return ret;
+	}
+	ret = controller_pwm_set_duty(
+		c->config->pwm_mos->channel, c->config->pwm_mos->duty);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "controller_pwm_set_duty for pwm_mos failed: "
+			"[%d]", ret);
+		return ret;
+	}
 	return 0;
 }

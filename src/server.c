@@ -6,19 +6,18 @@
 #include "controller.h"
 
 #define TAG "SERVER"
+
 #define HTTP_SERVER_PORT 80
+
 #ifndef MIN
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #endif
-
-#define SCRATCH_BUFSIZE  8192
 
 #define IS_FILE_EXT(filename, ext) \
     (strcasecmp(&filename[strlen(filename) - sizeof(ext) + 1], ext) == 0)
 
 struct http_context {
 	char base_path[16];
-	char scratch[SCRATCH_BUFSIZE];
 	struct config *config;
 };
 
@@ -44,8 +43,16 @@ static esp_err_t set_content_type_from_file(
 	return httpd_resp_set_type(req, "text/plain");
 }
 
-/* Copies the full path into destination buffer and returns
- * pointer to path (skipping the preceding base path) */
+/**
+ * @brief Copies the full path into destination buffer and returns
+ * pointer to path (skipping the preceding base path)
+ *
+ * @param dest
+ * @param base_path
+ * @param uri
+ * @param destsize
+ * @return const char*
+ */
 static const char* get_path_from_uri(
 	char *dest, const char *base_path, const char *uri, size_t destsize
 ) {
@@ -74,16 +81,14 @@ static const char* get_path_from_uri(
 	return dest + base_pathlen;
 }
 
-static esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
-{
+static esp_err_t http_404_error_handler(
+	httpd_req_t *req, httpd_err_code_t err
+) {
 	char *buffer = NULL;
 	read_file(&buffer, "/spiffs/404.html");
 	if (!buffer) {
 		httpd_resp_send_err(
-			req,
-			HTTPD_404_NOT_FOUND,
-			"<h1>404 NOT FOUND</h1>"
-		);
+			req, err, "<h1>404 NOT FOUND</h1>");
 		return ESP_FAIL;
 	}
 	httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, buffer);
@@ -92,131 +97,147 @@ static esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
 	return ESP_FAIL;
 }
 
-static esp_err_t http_controller_handler(httpd_req_t *req)
-{
-	bool remove_query = false;
-	while (1) {
-		/* Read URL query string length and allocate memory for
-		* length + 1, extra byte for null termination.
-		*/
-		int length = httpd_req_get_url_query_len(req) + 1;
-		if (length < 1) {
-			break;
-		}
+/**
+ * @brief processing http url query of config settings
+ *
+ * @param req [in] http request
+ * @param keys [in] key string array
+ * @param keys_num [in] array num
+ * @return esp_err_t
+ */
+static esp_err_t process_settings_query(
+	httpd_req_t *req,
+	const char **keys,
+	int keys_num
+) {
+	if (req == NULL) {
+		ESP_LOGE(TAG, "process_settings_query: invalid param");
+		return ESP_FAIL;
+	}
 
-		char *buffer = malloc(length);
-		if (httpd_req_get_url_query_str(req, buffer, length) != 0) {
-			free(buffer);
-			break;
-		}
-		// ESP_LOGI(TAG, "Found URL query => %s", buffer);
-		remove_query = true;
-		char param[128] = { 0 };
-		if (httpd_query_key_value(
-			buffer, "fan-enable", param, sizeof(param)) == 0) {
-			ESP_LOGI(TAG,
-				"Found URL query parameter => fan-enable=%s",
-				param);
-                        ESP_LOGI(TAG, "fan-enable: %s", buffer);
-			if (strcmp(param, "0") == 0) {
-				// int ret = controller_set_pwm_fan_duty(0);
-				// if (ret != ESP_OK) {
-				// 	ESP_LOGE(TAG,
-				// 		"failed to set duty: %d", ret);
-				// }
-				free(buffer);
-				buffer = NULL;
-				break;
-			}
-		}
-		if (httpd_query_key_value(
-			buffer, "fan-speed", param, sizeof(param)) == 0) {
-			ESP_LOGI(TAG,
-				"Found URL query parameter => fan-speed=%s",
-				param);
-			int duty = 0;
-			int param_length = strlen(param);
-			for (int i = 0; i < param_length; i++) {
-				if (param[i] > '9' || param[i] < '0') {
-					continue;
-				}
-				duty = duty * 10 + param[i] - '0';
-			}
-			if (duty > 255) {
-				ESP_LOGE(TAG, "duty outrange: %d", duty);
-				duty = 255;
-			}
-			// int ret = controller_set_pwm_fan_duty(duty);
-			// if (ret != ESP_OK) {
-			// 	free(buffer);
-			// 	buffer = NULL;
-			// 	ESP_LOGE(TAG,
-			// 		"failed to set duty: %d", ret);
-			// 	break;
-			// }
-                        ESP_LOGI(TAG, "fan-speed: %d", duty);
-		}
-		if (httpd_query_key_value(
-			buffer, "getconfig", param, sizeof(param)) == 0) {
-			free(buffer);
-			buffer = NULL;
+	// Read URL query string length and allocate memory for
+	// length + 1, extra byte for null termination.
+	int length = httpd_req_get_url_query_len(req) + 1;
+	if (length < 1) {
+		// Query not found, return directly.
+		return ESP_OK;
+	}
 
-			uint8_t duty = 0;
-			int ret = 0;
-			// int ret = controller_get_pwm_fan_duty(&duty);
-			// if (ret != ESP_OK) {
-			// 	ESP_LOGE(TAG,
-			// 		"failed to get duty: %d", ret);
-			// 	break;
-			// }
-			buffer = malloc(sizeof(char) * 128);
-			sprintf(buffer, "{\"duty\":%u}", duty);
-			ret = httpd_resp_set_type(req, "application/json");
-			if (ret != ESP_OK) {
-				return ret;
-			}
-			ret = httpd_resp_send(req, buffer, -1);
-			ESP_LOGI(TAG, "getconfig: %s", buffer);
+	int ret = 0;
+	char *buffer = malloc(length);
+	if ((ret = httpd_req_get_url_query_str(req, buffer, length)) != 0) {
+		if (ret != ESP_ERR_NOT_FOUND) {
 			free(buffer);
+			ESP_LOGE(TAG, "httpd_req_get_url_query_str: %d", ret);
 			return ret;
 		}
-
-		free(buffer);
-		break;
 	}
 
-	if (remove_query) {
-		return httpd_resp_send(req,
-"<!DOCTYPE html>\n"
-"<head>\n"
-"<link rel='stylesheet' href='/css/styles.css'>\n"
-"<meta http-equiv='Refresh' content=\"0; url='/controller'\" />\n"
-"</head>\n"
-"<body></body>\n",
-			HTTPD_RESP_USE_STRLEN);
+	char param[128] = { 0 };
+	for (int i = 0; i < keys_num; i++) {
+		if (httpd_query_key_value(buffer, keys[i],
+			param, sizeof(param)) == 0)
+		{
+			ESP_LOGI(TAG, "process_settings_query: "
+				"query setting: %s=%s", keys[i], param);
+			ret = global_controller_update_config(
+				keys[i], param);
+			if (ret != ESP_OK) {
+				ESP_LOGE(TAG, "process_settings_query: "
+					"failed to update setting %s: %d",
+					keys[i], ret);
+				free(buffer);
+				return ret;
+			}
+		}
 	}
 
-	char *content = NULL;
-	int size = read_file(&content, "/spiffs/controller/index.html");
-	if (!content) {
-		return http_404_error_handler(req, HTTPD_404_NOT_FOUND);
-	}
-	esp_err_t ret = httpd_resp_set_type(req, "text/html");
-	if (ret != ESP_OK) {
-		free(content);
-		content = NULL;
-		return ret;
-	}
-	ret = httpd_resp_send(req, content, size);
-	free(content);
-	content = NULL;
-
-	return ESP_OK;
+	free(buffer);
+	return 0;
 }
 
+/**
+ * @brief handler '/settings' http get request.
+ * It will update the controller config by http get query,
+ * and the response will be the updated config json data.
+ *
+ * @param req
+ * @return esp_err_t
+ */
+static esp_err_t handle_http_settings_req(httpd_req_t *req)
+{
+	static const char keys[][24] = {
+		CONFIG_KEY_PWM_FAN_CHANNEL,
+		CONFIG_KEY_PWM_FAN_FREQUENCY,
+		CONFIG_KEY_PWM_FAN_GPIO,
+		CONFIG_KEY_PWM_FAN_DUTY,
+		CONFIG_KEY_PWM_MOS_CHANNEL,
+		CONFIG_KEY_PWM_MOS_FREQUENCY,
+		CONFIG_KEY_PWM_MOS_GPIO,
+		CONFIG_KEY_PWM_MOS_DUTY,
+		CONFIG_KEY_WIFI_SSID,
+		CONFIG_KEY_WIFI_PASSWORD,
+		CONFIG_KEY_WIFI_CHANNEL,
+		CONFIG_KEY_DHCPS_IP,
+		CONFIG_KEY_DHCPS_NETMASK,
+		CONFIG_KEY_DHCPS_AS_ROUTER
+	};
+
+	int ret = 0;
+	ret = process_settings_query(
+		req, (const char**) keys, (int) sizeof(keys)/24);
+	if (ret != ESP_OK) {
+		ESP_ERROR_CHECK_WITHOUT_ABORT(ret);
+		return httpd_resp_send_err(
+			req,
+			HTTPD_500_INTERNAL_SERVER_ERROR,
+			"500: process_settings_query failed"
+		);
+	}
+
+	char *data = malloc(sizeof(char) * 1024);
+	if (data == NULL) {
+		return httpd_resp_send_err(
+			req,
+			HTTPD_500_INTERNAL_SERVER_ERROR,
+			"500: malloc failed when marshal json"
+		);
+	}
+	memset(data, 0, sizeof(char) * 1024);
+	if ((ret = global_controller_config_marshal_json(data)) != ESP_OK) {
+		return httpd_resp_send_err(
+			req,
+			HTTPD_500_INTERNAL_SERVER_ERROR,
+			"500: config_marshal_json failed"
+		);
+	}
+	if ((ret = httpd_resp_set_type(req, "application/json")) != ESP_OK) {
+		free(data);
+		return httpd_resp_send_err(
+			req,
+			HTTPD_500_INTERNAL_SERVER_ERROR,
+			"500: httpd_resp_set_type failed"
+		);
+	}
+	ret = httpd_resp_send(req, data, HTTPD_RESP_USE_STRLEN);
+	free(data);
+	data = NULL;
+	ESP_LOGI(TAG, "handle_http_settings_req: response config json");
+
+	return ret;
+}
+
+/**
+ * @brief default handler for handling all requests.
+ * by default this handler will try to load the static html file.
+ * If the URI is '/settings', the handler will update the controller config
+ * by the settings http query and response the JSON settings data.
+ *
+ * @param req
+ * @return esp_err_t
+ */
 static esp_err_t http_default_handler(httpd_req_t *req)
 {
-	static char buffer[1024];
 	esp_err_t ret = ESP_OK;
 	static char filepath[CONFIG_HTTPD_MAX_URI_LEN] = { 0 };
 	memset(filepath, 0, CONFIG_HTTPD_MAX_URI_LEN * sizeof(char));
@@ -228,12 +249,11 @@ static esp_err_t http_default_handler(httpd_req_t *req)
 		sizeof(filepath)
 	);
 	if (!filename) {
-		httpd_resp_send_err(
+		return httpd_resp_send_err(
 			req,
 			HTTPD_414_URI_TOO_LONG,
 			"URI TOO LONG"
 		);
-		return ESP_FAIL;
 	}
 
 	// Only GET method allowed for other URLs
@@ -245,17 +265,18 @@ static esp_err_t http_default_handler(httpd_req_t *req)
 		);
 	}
 
-	// Register handler for controller
-	if (strcmp(filename, "/controller") == 0) {
-		return http_controller_handler(req);
+	// Register handler for settings
+	if (strcmp(filename, "/settings") == 0) {
+		return handle_http_settings_req(req);
 	}
 
-	size_t length = httpd_req_get_hdr_value_len(req, "Host") + 1;
-	if (length > 1) {
-		ret = httpd_req_get_hdr_value_str(req, "Host", buffer, length);
-		if (ret == ESP_OK) {
-			ESP_LOGI(TAG, "HTTP get from host: %s", buffer);
-		}
+	char *buffer = malloc(2048 * sizeof(char));
+	if (buffer == NULL) {
+		return httpd_resp_send_err(
+			req,
+			HTTPD_500_INTERNAL_SERVER_ERROR,
+			"http_default_handler: malloc failed"
+		);
 	}
 	if (!is_regular_file(filepath)) {
 		if (filepath[strlen(filepath)-1] == '/') {
@@ -272,13 +293,14 @@ static esp_err_t http_default_handler(httpd_req_t *req)
 	}
 	ret = set_content_type_from_file(req, buffer);
 	if (ret != ESP_OK) {
+		free(buffer);
 		free(content);
 		content = NULL;
 		return ret;
 	}
 	ret = httpd_resp_send(req, content, size);
+	free(buffer);
 	free(content);
-	content = NULL;
 	return ret;
 }
 

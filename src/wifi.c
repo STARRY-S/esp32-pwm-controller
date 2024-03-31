@@ -89,18 +89,15 @@ esp_err_t init_controller_wifi_softap(struct config *c)
 		ESP_LOGE(TAG, "esp_wifi_set_config [%d]", ret);
 		return ret;
 	}
-	if ((ret = esp_wifi_start()) != ESP_OK) {
-		ESP_LOGE(TAG, "esp_wifi_start [%d]", ret);
-		return ret;
-	}
-	ESP_LOGI(TAG, "init WIFI: SSID [%s] channel [%u]",
-		c->wifi->ssid, c->wifi->channel);
 
-        // Restart DHCP server to set options.
+	// Restart DHCP server to set options.
 	if ((ret = esp_netif_dhcps_stop(wifi_ap)) != ESP_OK) {
-		ESP_LOGE(TAG, "esp_wifi_start [%d]", ret);
-		return ret;
+		if (ret != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED) {
+			ESP_LOGE(TAG, "esp_wifi_start [%d]", ret);
+			return ret;
+		}
 	}
+
 	// If the as_router is 0, it will allow iPhone to use cellular data
 	// when connected to this wifi AP.
 	ret = esp_netif_dhcps_option(
@@ -110,6 +107,10 @@ esp_err_t init_controller_wifi_softap(struct config *c)
 		&c->dhcps->as_router,
 		sizeof(c->dhcps->as_router)
 	);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "esp_netif_dhcps_option [%d]", ret);
+		return ret;
+	}
 
         // Set IP address.
         esp_netif_ip_info_t info = {
@@ -119,7 +120,7 @@ esp_err_t init_controller_wifi_softap(struct config *c)
 	};
 	if ((ret = esp_netif_set_ip_info(wifi_ap, &info)) != ESP_OK) {
 		ESP_LOGE(TAG, "esp_netif_set_ip_info [%d]", ret);
-		return ESP_FAIL;
+		return ret;
 	}
 
         // Restart DHCP server to set options.
@@ -127,6 +128,13 @@ esp_err_t init_controller_wifi_softap(struct config *c)
 		ESP_LOGE(TAG, "esp_netif_dhcps_start [%d]", ret);
 		return ESP_FAIL;
 	}
+
+	if ((ret = esp_wifi_start()) != ESP_OK) {
+		ESP_LOGE(TAG, "esp_wifi_start [%d]", ret);
+		return ret;
+	}
+	ESP_LOGI(TAG, "init WIFI: SSID [%s] channel [%u]",
+		c->wifi->ssid, c->wifi->channel);
 
 	return ESP_OK;
 }

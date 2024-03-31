@@ -28,7 +28,7 @@ void app_main()
 	ESP_ERROR_CHECK(init_global_controller());
 	ESP_ERROR_CHECK(global_controller_start());
 
-	while (global_controller_poll_events()) {
+	while (global_controller_main_loop()) {
 		continue;
 	}
 }

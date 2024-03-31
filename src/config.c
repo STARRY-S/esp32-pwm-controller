@@ -570,7 +570,9 @@ esp_err_t config_set_value(
 	}
 	if (strcmp(key, CONFIG_KEY_DHCPS_IP) == 0) {
 		esp_ip4_addr_t ip = str2ipv4(value);
-		if (ip.addr == 0 || (ip.addr & 0xff0000ff) == 0) {
+		if (ip.addr == 0 || !(ip.addr & 0xff000000) ||
+			!(ip.addr & 0x000000ff))
+		{
 			ip.addr = 0x010A0A0A; // 10.10.10.1
 			ESP_LOGE(TAG, "invalid "CONFIG_KEY_DHCPS_IP" [%s], "
 				"set to default: 0x%8X, "IPSTR,
@@ -610,7 +612,7 @@ esp_err_t config_set_value(
 	return ESP_FAIL;
 }
 
-esp_err_t config_marshal_json(struct config *config, char* data)
+esp_err_t config_marshal_json(struct config *config, char *data)
 {
 	if (!is_valid_config(config)) {
 		ESP_LOGE(TAG, "config_marshal_json: invalid config");
@@ -648,7 +650,8 @@ esp_err_t config_marshal_json(struct config *config, char* data)
 	return ESP_OK;
 }
 
-void release_config(struct config **p) {
+void release_config(struct config **p)
+{
 	if (p == NULL) {
 		return;
 	}
