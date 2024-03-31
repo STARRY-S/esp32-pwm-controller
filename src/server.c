@@ -278,17 +278,22 @@ static esp_err_t http_default_handler(httpd_req_t *req)
 			"http_default_handler: malloc failed"
 		);
 	}
-	if (!is_regular_file(filepath)) {
+	if (is_regular_file(filepath)) {
+		// the file exists and is not a directory.
+		sprintf(buffer, "%s", filepath);
+	} else {
+		// the filepath may not exists or maybe a directory.
 		if (filepath[strlen(filepath)-1] == '/') {
+			// remove the last '/' in filepath.
 			filepath[strlen(filepath)-1] = '\0';
 		}
 		sprintf(buffer, "%s/index.html", filepath);
-	} else {
-		sprintf(buffer, "%s", filepath);
 	}
+
 	char *content = NULL;
 	int size = read_file(&content, buffer);
 	if (!content) {
+		free(buffer);
 		return http_404_error_handler(req, HTTPD_404_NOT_FOUND);
 	}
 	ret = set_content_type_from_file(req, buffer);
@@ -296,9 +301,13 @@ static esp_err_t http_default_handler(httpd_req_t *req)
 		free(buffer);
 		free(content);
 		content = NULL;
-		return ret;
+		ESP_ERROR_CHECK_WITHOUT_ABORT(ret);
+		return httpd_resp_send_err(req,
+			HTTPD_500_INTERNAL_SERVER_ERROR,
+			"set_content_type_from_file failed");
 	}
 	ret = httpd_resp_send(req, content, size);
+	ESP_ERROR_CHECK_WITHOUT_ABORT(ret);
 	free(buffer);
 	free(content);
 	return ret;
