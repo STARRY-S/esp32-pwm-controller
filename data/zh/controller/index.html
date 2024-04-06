@@ -3,37 +3,43 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <meta name="theme-color" content="#2e2e2e"/>
-    <title>PWM Fan Controller</title>
+    <title>速度调节 | PWM 风扇控制器</title>
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <div class="box">
-        <h1>PWM Fan Controller</h1>
+        <h1>风扇速度调节</h1>
         <hr>
         <br>
         <form id="submit-form">
             <div class="row">
-                <label for="fan-enable" class="column">Fan Enabled:</label>
+                <label for="fan-enable" class="column">开启风扇:</label>
                 <input type='hidden' id="fan-enable-hidden" name='fan-enable' value='0'>
                 <div class="column">
                     <label class="switch">
                         <input type="checkbox" id="fan-enable" name="fan-enable" value="1">
-                        <span class="slider round"></span>
+                        <span class="btn round"></span>
                     </label>
                 </div>
             </div>
             <br>
             <div class="row">
-                <label for="fan-speed" class="column">Fan Speed:</label>
+                <label for="fan-speed" class="column">风扇速度:</label>
                 <code id="fan-speed-percentage" class="column">N/A</code>
             </div>
             <br>
-            <input type="range" id="fan-speed" name="fan-speed" min="30" max="254" value="0">
+            <div class="slidecontainer">
+                <input class="slider" type="range" id="fan-speed" name="fan-speed" min="30" max="255" value="0">
+            </div>
             <br>
 
-            <input type="submit" value="Submit">
         </form>
+        <button id="button-save" class="lbtn blue-bg">保存</button>
+        <button class="lbtn" onclick="location.href='/zh'">返回主页面</button>
     </div>
+    <footer>
+        <p class="tip">© 2024 STARRY-S</p>
+    </footer>
     <script src="/js/controller.js"></script>
 </body>

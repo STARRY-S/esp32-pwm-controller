@@ -1,24 +1,16 @@
 {
-    "pwm_fan": {
-        "channel": "%u",
-        "frequency": "%u",
-        "gpio": "%u",
-        "duty": "%u"
-    },
-    "pwm_mos": {
-        "channel": "%u",
-        "frequency": "%u",
-        "gpio": "%u",
-        "duty": "%u"
-    },
-    "wifi": {
-        "ssid": "%s",
-        "password": "%s",
-        "channel": "%u"
-    },
-    "dhcps": {
-        "ip": "%d.%d.%d.%d",
-        "netmask": "%d.%d.%d.%d",
-        "as_router": "%u"
-    }
+    "pwm_fan_channel": "%u",
+    "pwm_fan_frequency": "%u",
+    "pwm_fan_gpio": "%u",
+    "pwm_fan_duty": "%u",
+    "pwm_mos_channel": "%u",
+    "pwm_mos_frequency": "%u",
+    "pwm_mos_gpio": "%u",
+    "pwm_mos_duty": "%u",
+    "wifi_ssid": "%s",
+    "wifi_password": "%s",
+    "wifi_channel": "%u",
+    "dhcps_ip": "%d.%d.%d.%d",
+    "dhcps_netmask": "%d.%d.%d.%d",
+    "dhcps_as_router": "%u"
 }

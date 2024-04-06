@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="theme-color" content="#2e2e2e"/>
+    <title>设置选项 | PWM 风扇控制器</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <div class="box">
+        <h1>设置选项</h1>
+        <p class="tip">控制器全部设置，部分选项不可修改，修改后需重启生效。</p>
+
+        <h2>WIFI 设置</h2>
+        <hr>
+        <blockquote>
+            <p class="tip">WIFI 相关设置，可修改默认名称和密码，重启生效。</p>
+        </blockquote>
+        <label for="wifi_ssid" class="column">WIFI 名称:</label>
+        <input type="text" name="wifi_password" id="wifi_ssid" placeholder="UNKNOW">
+        <br>
+        <label for="wifi_password" class="column">密码:</label>
+        <input type="text" name="wifi_password" id="wifi_password" placeholder="UNKNOW">
+        <br>
+        <label for="wifi_channel" class="column">信道:</label>
+        <!-- <input type="text" name="wifi_channel" id="wifi_channel" value=""> -->
+        <select id="wifi_channel" name="wifi_channel">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+        </select>
+        <br>
+
+        <h2>DHCP Server 设置</h2>
+        <hr>
+        <blockquote>
+            <p class="tip">控制器 IP 地址等设置，重启生效。</p>
+        </blockquote>
+        <label for="dhcps_ip" class="column">控制器 IP:</label>
+        <input type="text" name="dhcps_ip" id="dhcps_ip" placeholder="192.168.4.1">
+        <br>
+        <label for="dhcps_netmask" class="column">子网掩码:</label>
+        <input type="text" name="dhcps_netmask" id="dhcps_netmask" placeholder="255.255.255.0" disabled>
+        <br>
+        <label for="dhcps_as_router" class="column">启用网关:</label>
+        <input type="text" name="dhcps_as_router" id="dhcps_as_router" placeholder="0" disabled>
+        <br>
+
+        <h2>PWM 设置</h2>
+        <hr>
+        <blockquote>
+            <p class="tip">PWM 相关设置，用于调节风扇速度，重启生效，<strong class="red">暂不支持修改！</strong></p>
+        </blockquote>
+        <label for="pwm_fan_channel" class="column">Channel:</label>
+        <input type="text" name="pwm_fan_channel" id="pwm_fan_channel" placeholder="N/A" disabled>
+        <br>
+        <label for="pwm_fan_frequency" class="column">Frequency:</label>
+        <input type="text" name="pwm_fan_frequency" id="pwm_fan_frequency" placeholder="N/A" disabled>
+        <br>
+        <label for="pwm_fan_gpio" class="column">GPIO:</label>
+        <input type="text" name="pwm_fan_gpio" id="pwm_fan_gpio" placeholder="N/A" disabled>
+        <br>
+
+        <h2>风扇（LED）开关设置</h2>
+        <hr>
+        <blockquote>
+            <p class="tip">风扇（LED）开关的相关设置，重启生效，<strong class="red">暂不支持修改！</strong></p>
+        </blockquote>
+        <label for="pwm_mos_channel" class="column">Channel:</label>
+        <input type="text" name="pwm_mos_channel" id="pwm_mos_channel" placeholder="N/A" disabled>
+        <br>
+        <label for="pwm_mos_frequency" class="column">Frequency:</label>
+        <input type="text" name="pwm_mos_frequency" id="pwm_mos_frequency" placeholder="N/A" disabled>
+        <br>
+        <label for="pwm_mos_gpio" class="column">GPIO:</label>
+        <input type="text" name="pwm_mos_gpio" id="pwm_mos_gpio" placeholder="N/A" disabled>
+        <br>
+        <strong id="failed_message" class="red"></strong>
+        <button class="lbtn blue-bg" id="button_save">保存</button>
+        <button class="lbtn" onclick="location.href='/zh'">返回主页面</button>
+        <br>
+        <br>
+
+        <h2>其他选项</h2>
+        <hr>
+        <p>恢复所有设置至<strong>默认值</strong></p>
+        <button class="lbtn red-bg" onclick="reset_to_default()">恢复出场设置</button>
+        <hr>
+        <p>重启（需重新连接 WIFI）</p>
+        <button id="restart" class="lbtn red-bg" onclick="restart()">重启</button>
+    </div>
+    <footer>
+        <p class="tip">© 2024 STARRY-S</p>
+    </footer>
+    <script src="/js/setting.js"></script>
+</body>

@@ -1,0 +1,16 @@
+{
+    "pwm_fan_channel": "0",
+    "pwm_fan_frequency": "250000",
+    "pwm_fan_gpio": "4",
+    "pwm_fan_duty": "50",
+    "pwm_mos_channel": "1",
+    "pwm_mos_frequency": "250000",
+    "pwm_mos_gpio": "8",
+    "pwm_mos_duty": "250",
+    "wifi_ssid": "TEST_DATA_TEST_DATA",
+    "wifi_password": "TEST_PASSWORD",
+    "wifi_channel": "1",
+    "dhcps_ip": "192.168.101.1",
+    "dhcps_netmask": "255.255.255.0",
+    "dhcps_as_router": "0"
+}

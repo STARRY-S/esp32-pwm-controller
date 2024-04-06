@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="theme-color" content="#2e2e2e"/>
+    <title>Fan Speed | PWM Fan Controller</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <div class="box">
+        <h1>Fan Speed</h1>
+        <hr>
+        <br>
+        <form id="submit-form">
+            <div class="row">
+                <label for="fan-enable" class="column">Fan power:</label>
+                <input type='hidden' id="fan-enable-hidden" name='fan-enable' value='0'>
+                <div class="column">
+                    <label class="switch">
+                        <input type="checkbox" id="fan-enable" name="fan-enable" value="1">
+                        <span class="btn round"></span>
+                    </label>
+                </div>
+            </div>
+            <br>
+            <div class="row">
+                <label for="fan-speed" class="column">Fan speed:</label>
+                <code id="fan-speed-percentage" class="column">N/A</code>
+            </div>
+            <br>
+            <div class="slidecontainer">
+                <input class="slider" type="range" id="fan-speed" name="fan-speed" min="30" max="255" value="0">
+            </div>
+            <br>
+
+        </form>
+        <button id="button-save" class="lbtn blue-bg">Save</button>
+        <button class="lbtn" onclick="location.href='/en';">Return</button>
+    </div>
+    <footer>
+        <p class="tip">© 2024 STARRY-S</p>
+    </footer>
+    <script src="/js/controller.js"></script>
+</body>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="theme-color" content="#2e2e2e"/>
+    <title>Settings | PWM Fan Controller</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <div class="box">
+        <h1>Settings</h1>
+        <p class="tip">Controller settings, restart to apply changes.</p>
+
+        <h2>WIFI Settings</h2>
+        <hr>
+        <blockquote>
+            <p class="tip">Settings for WIFI SSID, password and channel, restart to apply.</p>
+        </blockquote>
+        <label for="wifi_ssid" class="column">WIFI SSID:</label>
+        <input type="text" name="wifi_password" id="wifi_ssid" placeholder="UNKNOW">
+        <br>
+        <label for="wifi_password" class="column">Password:</label>
+        <input type="text" name="wifi_password" id="wifi_password" placeholder="UNKNOW">
+        <br>
+        <label for="wifi_channel" class="column">Channel:</label>
+        <!-- <input type="text" name="wifi_channel" id="wifi_channel" value=""> -->
+        <select id="wifi_channel" name="wifi_channel">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+        </select>
+        <br>
+
+        <h2>DHCP Server Settings</h2>
+        <hr>
+        <blockquote>
+            <p class="tip">Settings about controller DHCP Server (IP address), restart to apply.</p>
+        </blockquote>
+        <label for="dhcps_ip" class="column">Controller IP:</label>
+        <input type="text" name="dhcps_ip" id="dhcps_ip" placeholder="192.168.4.1">
+        <br>
+        <label for="dhcps_netmask" class="column">Netmask:</label>
+        <input type="text" name="dhcps_netmask" id="dhcps_netmask" placeholder="255.255.255.0" disabled>
+        <br>
+        <label for="dhcps_as_router" class="column">As Router:</label>
+        <input type="text" name="dhcps_as_router" id="dhcps_as_router" placeholder="0" disabled>
+        <br>
+
+        <h2>PWM Settings</h2>
+        <hr>
+        <blockquote>
+            <p class="tip">PWM settings, <strong class="red">unsupport to change curretly.</strong></p>
+        </blockquote>
+        <label for="pwm_fan_channel" class="column">Channel:</label>
+        <input type="text" name="pwm_fan_channel" id="pwm_fan_channel" placeholder="N/A" disabled>
+        <br>
+        <label for="pwm_fan_frequency" class="column">Frequency:</label>
+        <input type="text" name="pwm_fan_frequency" id="pwm_fan_frequency" placeholder="N/A" disabled>
+        <br>
+        <label for="pwm_fan_gpio" class="column">GPIO:</label>
+        <input type="text" name="pwm_fan_gpio" id="pwm_fan_gpio" placeholder="N/A" disabled>
+        <br>
+
+        <h2>Fan (LED) Power Switch Settings</h2>
+        <hr>
+        <blockquote>
+            <p class="tip">Fan (on-board LED) power switch settings, <strong class="red">unsupport to change curretly.</strong></p>
+        </blockquote>
+        <label for="pwm_mos_channel" class="column">Channel:</label>
+        <input type="text" name="pwm_mos_channel" id="pwm_mos_channel" placeholder="N/A" disabled>
+        <br>
+        <label for="pwm_mos_frequency" class="column">Frequency:</label>
+        <input type="text" name="pwm_mos_frequency" id="pwm_mos_frequency" placeholder="N/A" disabled>
+        <br>
+        <label for="pwm_mos_gpio" class="column">GPIO:</label>
+        <input type="text" name="pwm_mos_gpio" id="pwm_mos_gpio" placeholder="N/A" disabled>
+        <br>
+        <strong id="failed_message" class="red"></strong>
+        <button class="lbtn blue-bg" id="button_save">Save</button>
+        <button class="lbtn" onclick="location.href='/en';">Return</button>
+        <br>
+        <br>
+
+        <h2>Others</h2>
+        <hr>
+        <p>Reset all settings to <strong>default.</strong></p>
+        <button class="lbtn red-bg" onclick="reset_to_default()">Reset to default</button>
+        <hr>
+        <p>Restart (need to re-connect WIFI manually).</p>
+        <button id="restart" class="lbtn red-bg" onclick="restart()">Restart</button>
+    </div>
+    <footer>
+        <p class="tip">© 2024 STARRY-S</p>
+    </footer>
+    <script src="/js/setting.js"></script>
+</body>
