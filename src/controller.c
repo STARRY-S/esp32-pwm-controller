@@ -166,6 +166,16 @@ esp_err_t global_controller_update_config(const char* k, const char* v)
 	return controller->update_config(controller, k, v);
 }
 
+esp_err_t global_controller_save_config()
+{
+	if (!controller_initialized(controller)) {
+		ESP_LOGE(TAG,
+			"global_controller_save_config: not initialized");
+		return ESP_FAIL;
+	}
+	return controller->save_config(controller);
+}
+
 esp_err_t global_controller_config_marshal_json(char *data)
 {
 	return config_marshal_json(controller->config, data);
@@ -178,6 +188,23 @@ esp_err_t global_controller_stop()
 		return ESP_FAIL;
 	}
 	return controller->stop_server(controller);
+}
+
+esp_err_t global_controller_reset_default()
+{
+	if (!controller_initialized(controller)) {
+		ESP_LOGE(TAG, "global_controller_reset_default: "
+			"not initialized");
+		return ESP_FAIL;
+	}
+	release_config(&controller->config);
+	controller->config = new_config_by_load_default_file();
+	if (controller->config == NULL) {
+		ESP_LOGE(TAG, "global_controller_reset_default: "
+			"new_config_by_load_default_file failed");
+		return ESP_FAIL;
+	}
+	return 0;
 }
 
 bool controller_initialized(struct controller *c)
@@ -279,11 +306,8 @@ static int default_controller_stop(struct controller* c)
 		ESP_LOGW(TAG, "default_controller_stop: "
 			"save_config_file: [%d]", ret);
 	}
-	if ((ret = stop_default_http_server(c->server_handle)) != 0) {
-		ESP_LOGW(TAG, "default_controller_stop: "
-			"failed to stop http server: [%d]", ret);
-	}
-	c->server_handle = NULL;
+	ESP_LOGW(TAG, "server will restart now!");
+	ESP_ERROR_CHECK(ESP_FAIL);
 	return ESP_OK;
 }
 

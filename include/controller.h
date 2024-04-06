@@ -56,6 +56,10 @@ esp_err_t global_controller_apply_pwm_duty();
 
 esp_err_t global_controller_update_config(const char* k, const char* v);
 
+esp_err_t global_controller_save_config();
+
+esp_err_t global_controller_reset_default();
+
 esp_err_t global_controller_config_marshal_json(char *data);
 
 /**

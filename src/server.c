@@ -101,16 +101,11 @@ static esp_err_t http_404_error_handler(
  * @brief processing http url query of config settings
  *
  * @param req [in] http request
- * @param keys [in] key string array
- * @param keys_num [in] array num
+ * @param has_query [out] has HTTP query
  * @return esp_err_t
  */
-static esp_err_t process_settings_query(
-	httpd_req_t *req,
-	const char **keys,
-	int keys_num
-) {
-	if (req == NULL) {
+static esp_err_t process_settings_query(httpd_req_t *req, bool *has_query) {
+	if (req == NULL || has_query == NULL) {
 		ESP_LOGE(TAG, "process_settings_query: invalid param");
 		return ESP_FAIL;
 	}
@@ -134,14 +129,31 @@ static esp_err_t process_settings_query(
 	}
 
 	char param[128] = { 0 };
+	static const char keys[][24] = {
+		CONFIG_KEY_PWM_FAN_CHANNEL,
+		CONFIG_KEY_PWM_FAN_FREQUENCY,
+		CONFIG_KEY_PWM_FAN_GPIO,
+		CONFIG_KEY_PWM_FAN_DUTY,
+		CONFIG_KEY_PWM_MOS_CHANNEL,
+		CONFIG_KEY_PWM_MOS_FREQUENCY,
+		CONFIG_KEY_PWM_MOS_GPIO,
+		CONFIG_KEY_PWM_MOS_DUTY,
+		CONFIG_KEY_WIFI_SSID,
+		CONFIG_KEY_WIFI_PASSWORD,
+		CONFIG_KEY_WIFI_CHANNEL,
+		CONFIG_KEY_DHCPS_IP,
+		CONFIG_KEY_DHCPS_NETMASK,
+		CONFIG_KEY_DHCPS_AS_ROUTER
+	};
+	static int keys_num = sizeof(keys) / (sizeof(char) * 24);
 	for (int i = 0; i < keys_num; i++) {
-		if (httpd_query_key_value(buffer, keys[i],
+		if (httpd_query_key_value(buffer, (const char*) &keys[i],
 			param, sizeof(param)) == 0)
 		{
 			ESP_LOGI(TAG, "process_settings_query: "
 				"query setting: %s=%s", keys[i], param);
 			ret = global_controller_update_config(
-				keys[i], param);
+				(const char*) &keys[i], param);
 			if (ret != ESP_OK) {
 				ESP_LOGE(TAG, "process_settings_query: "
 					"failed to update setting %s: %d",
@@ -149,6 +161,7 @@ static esp_err_t process_settings_query(
 				free(buffer);
 				return ret;
 			}
+			*has_query = true;
 		}
 	}
 
@@ -166,26 +179,9 @@ static esp_err_t process_settings_query(
  */
 static esp_err_t handle_http_settings_req(httpd_req_t *req)
 {
-	static const char keys[][24] = {
-		CONFIG_KEY_PWM_FAN_CHANNEL,
-		CONFIG_KEY_PWM_FAN_FREQUENCY,
-		CONFIG_KEY_PWM_FAN_GPIO,
-		CONFIG_KEY_PWM_FAN_DUTY,
-		CONFIG_KEY_PWM_MOS_CHANNEL,
-		CONFIG_KEY_PWM_MOS_FREQUENCY,
-		CONFIG_KEY_PWM_MOS_GPIO,
-		CONFIG_KEY_PWM_MOS_DUTY,
-		CONFIG_KEY_WIFI_SSID,
-		CONFIG_KEY_WIFI_PASSWORD,
-		CONFIG_KEY_WIFI_CHANNEL,
-		CONFIG_KEY_DHCPS_IP,
-		CONFIG_KEY_DHCPS_NETMASK,
-		CONFIG_KEY_DHCPS_AS_ROUTER
-	};
-
 	int ret = 0;
-	ret = process_settings_query(
-		req, (const char**) keys, (int) sizeof(keys)/24);
+	bool has_query = false;
+	ret = process_settings_query(req, &has_query);
 	if (ret != ESP_OK) {
 		ESP_ERROR_CHECK_WITHOUT_ABORT(ret);
 		return httpd_resp_send_err(
@@ -219,11 +215,44 @@ static esp_err_t handle_http_settings_req(httpd_req_t *req)
 			"500: httpd_resp_set_type failed"
 		);
 	}
+	if ((ret = global_controller_apply_pwm_duty()) != ESP_OK) {
+		free(data);
+		return httpd_resp_send_err(
+			req,
+			HTTPD_500_INTERNAL_SERVER_ERROR,
+			"500: global_controller_apply_pwm_duty failed"
+		);
+	}
+	if (has_query && (ret = global_controller_save_config()) != ESP_OK) {
+		free(data);
+		return httpd_resp_send_err(
+			req,
+			HTTPD_500_INTERNAL_SERVER_ERROR,
+			"500: global_controller_save_config failed"
+		);
+	}
 	ret = httpd_resp_send(req, data, HTTPD_RESP_USE_STRLEN);
 	free(data);
 	data = NULL;
-	ESP_LOGI(TAG, "handle_http_settings_req: response config json");
+	ESP_LOGD(TAG, "handle_http_settings_req: response config json");
 
+	return ret;
+}
+
+static esp_err_t handle_http_restart_req(httpd_req_t *req)
+{
+	int ret = 0;
+	ret = httpd_resp_send(req, "SUCCEED", HTTPD_RESP_USE_STRLEN);
+	global_controller_stop();
+
+	return ret;
+}
+
+static esp_err_t handle_http_reset_settings_req(httpd_req_t *req)
+{
+	int ret = 0;
+	ret = httpd_resp_send(req, "SUCCEED", HTTPD_RESP_USE_STRLEN);
+	global_controller_reset_default();
 	return ret;
 }
 
@@ -265,9 +294,14 @@ static esp_err_t http_default_handler(httpd_req_t *req)
 		);
 	}
 
-	// Register handler for settings
 	if (strcmp(filename, "/settings") == 0) {
 		return handle_http_settings_req(req);
+	}
+	if (strcmp(filename, "/restart") == 0) {
+		return handle_http_restart_req(req);
+	}
+	if (strcmp(filename, "/reset_settings") == 0) {
+		return handle_http_reset_settings_req(req);
 	}
 
 	char *buffer = malloc(2048 * sizeof(char));

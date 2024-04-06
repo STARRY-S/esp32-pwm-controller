@@ -33,7 +33,23 @@ struct config* new_config_by_load_file()
 	char *content = NULL;
 	int ret = read_file(&content, CONFIG_FILE);
 	if (content == NULL || ret <= 0) {
-		ESP_LOGE(TAG, "failed to open config %s: %d", CONFIG_FILE, ret);
+		ESP_LOGE(TAG, "failed to open config %s: %d",
+			CONFIG_FILE, ret);
+		return NULL;
+	}
+	struct config *config = new_config_by_config_file_data(content, ret);
+	free(content);
+	content = NULL;
+	return config;
+}
+
+struct config* new_config_by_load_default_file()
+{
+	char *content = NULL;
+	int ret = read_file(&content, CONFIG_FILE_DEFAULT);
+	if (content == NULL || ret <= 0) {
+		ESP_LOGE(TAG, "failed to open config %s: %d",
+			CONFIG_FILE_DEFAULT, ret);
 		return NULL;
 	}
 	struct config *config = new_config_by_config_file_data(content, ret);
@@ -484,7 +500,7 @@ esp_err_t config_set_value(
 	}
 	if (strcmp(key, CONFIG_KEY_PWM_FAN_DUTY) == 0) {
 		int v = str2int(value);
-		if (v > 254 || v < 0) {
+		if (v > 255 || v < 0) {
 			ESP_LOGE(TAG, "invalid "CONFIG_KEY_PWM_FAN_DUTY" [%d], "
 				"set to default 100", v);
 			v = 100;

@@ -74,9 +74,13 @@ struct config {
 };
 
 /**
- * @brief CONFIG_FILE defines the default config file path.
+ * @brief CONFIG_FILE defines the config file path.
  */
 #define CONFIG_FILE "/spiffs/config/config.cfg"
+/**
+ * @brief CONFIG_FILE_DEFAULT defines the path of config file in default value.
+ */
+#define CONFIG_FILE_DEFAULT "/spiffs/config/config.cfg.default"
 
 /**
  * @brief CONFIG_JSON_TEMPLATE_FILE defines the default config json
@@ -85,12 +89,20 @@ struct config {
 #define CONFIG_JSON_TEMPLATE_FILE "/spiffs/config/config_template.json"
 
 /**
- * @brief new_config_by_load_file builds config struct object from the default
- * config file, need to release by `release_config` manually after usage.
+ * @brief new_config_by_load_file builds config struct object from the
+ * config file, need to release by `release_config` manually.
  *
  * @return struct config*
  */
 struct config* new_config_by_load_file();
+
+/**
+ * @brief new_config_by_load_default_file builds config struct object from the
+ * CONFIG_FILE_DEFAULT, need to release by `release_config` manually.
+ *
+ * @return struct config*
+ */
+struct config* new_config_by_load_default_file();
 
 /**
  * @brief save_config_file saves config into the default config file.
