@@ -11,10 +11,14 @@
 #define CONFIG_KEY_PWM_FAN_FREQUENCY 	"pwm_fan_frequency"
 #define CONFIG_KEY_PWM_FAN_GPIO 	"pwm_fan_gpio"
 #define CONFIG_KEY_PWM_FAN_DUTY 	"pwm_fan_duty"
+#define CONFIG_KEY_PWM_FAN_DUTY_MIN 	"pwm_fan_duty_min"
+#define CONFIG_KEY_PWM_FAN_DUTY_MAX 	"pwm_fan_duty_max"
 #define CONFIG_KEY_PWM_MOS_CHANNEL 	"pwm_mos_channel"
 #define CONFIG_KEY_PWM_MOS_FREQUENCY 	"pwm_mos_frequency"
 #define CONFIG_KEY_PWM_MOS_GPIO 	"pwm_mos_gpio"
 #define CONFIG_KEY_PWM_MOS_DUTY 	"pwm_mos_duty"
+#define CONFIG_KEY_PWM_MOS_DUTY_MIN 	"pwm_mos_duty_min"
+#define CONFIG_KEY_PWM_MOS_DUTY_MAX 	"pwm_mos_duty_max"
 #define CONFIG_KEY_WIFI_SSID 		"wifi_ssid"
 #define CONFIG_KEY_WIFI_PASSWORD 	"wifi_password"
 #define CONFIG_KEY_WIFI_CHANNEL 	"wifi_channel"
@@ -30,6 +34,8 @@ struct pwm_config {
 	uint32_t frequency; // PWM frequency
 	uint8_t gpio;       // GPIO pin
 	uint8_t duty;       // PWM duty (0-255)
+	uint8_t duty_min;   // PWM duty min (0-255)
+	uint8_t duty_max;   // PWM duty max (0-255)
 };
 
 /**

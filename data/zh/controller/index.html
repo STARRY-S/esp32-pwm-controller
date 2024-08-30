@@ -9,10 +9,11 @@
 </head>
 <body>
     <div class="box">
-        <h1>风扇速度调节</h1>
-        <hr>
-        <br>
         <form id="submit-form">
+            <!----------------------------->
+            <h2 class="center">风扇速度</h2>
+            <hr>
+            <br>
             <div class="row">
                 <label for="fan-enable" class="column">开启风扇:</label>
                 <input type='hidden' id="fan-enable-hidden" name='fan-enable' value='0'>
@@ -23,17 +24,36 @@
                     </label>
                 </div>
             </div>
-            <br>
             <div class="row">
                 <label for="fan-speed" class="column">风扇速度:</label>
                 <code id="fan-speed-percentage" class="column">N/A</code>
             </div>
-            <br>
             <div class="slidecontainer">
                 <input class="slider" type="range" id="fan-speed" name="fan-speed" min="30" max="255" value="0">
             </div>
             <br>
-
+            <!----------------------------->
+            <h2 class="center">LED 亮度</h2>
+            <hr>
+            <div class="row">
+                <label for="led-enable" class="column">开启 LED:</label>
+                <input type='hidden' id="led-enable-hidden" name='led-enable' value='0'>
+                <div class="column">
+                    <label class="switch">
+                        <input type="checkbox" id="led-enable" name="led-enable" value="1">
+                        <span class="btn round"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="row">
+                <label for="led-brightness" class="column">LED 亮度:</label>
+                <code id="led-percentage" class="column">N/A</code>
+            </div>
+            <br>
+            <div class="slidecontainer">
+                <input class="slider" type="range" id="led-brightness" name="led-brightness" min="26" max="35" value="0">
+            </div>
+            <br>
         </form>
         <button id="button-save" class="lbtn blue-bg">保存</button>
         <button class="lbtn" onclick="location.href='/zh'">返回主页面</button>

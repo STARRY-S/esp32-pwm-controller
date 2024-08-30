@@ -72,10 +72,14 @@ esp_err_t save_config_file(struct config *config)
 		CONFIG_KEY_PWM_FAN_FREQUENCY"=%u\n"
 		CONFIG_KEY_PWM_FAN_GPIO"=%u\n"
 		CONFIG_KEY_PWM_FAN_DUTY"=%u\n"
+		CONFIG_KEY_PWM_FAN_DUTY_MIN"=%u\n"
+		CONFIG_KEY_PWM_FAN_DUTY_MAX"=%u\n"
 		CONFIG_KEY_PWM_MOS_CHANNEL"=%u\n"
 		CONFIG_KEY_PWM_MOS_FREQUENCY"=%u\n"
 		CONFIG_KEY_PWM_MOS_GPIO"=%u\n"
 		CONFIG_KEY_PWM_MOS_DUTY"=%u\n"
+		CONFIG_KEY_PWM_MOS_DUTY_MIN"=%u\n"
+		CONFIG_KEY_PWM_MOS_DUTY_MAX"=%u\n"
 		CONFIG_KEY_WIFI_SSID"=%s\n"
 		CONFIG_KEY_WIFI_PASSWORD"=%s\n"
 		CONFIG_KEY_WIFI_CHANNEL"=%u\n"
@@ -90,10 +94,14 @@ esp_err_t save_config_file(struct config *config)
 		(unsigned int) config->pwm_fan->frequency,
 		(unsigned int) config->pwm_fan->gpio,
 		(unsigned int) config->pwm_fan->duty,
+		(unsigned int) config->pwm_fan->duty_min,
+		(unsigned int) config->pwm_fan->duty_max,
 		(unsigned int) config->pwm_mos->channel,
 		(unsigned int) config->pwm_mos->frequency,
 		(unsigned int) config->pwm_mos->gpio,
 		(unsigned int) config->pwm_mos->duty,
+		(unsigned int) config->pwm_mos->duty_min,
+		(unsigned int) config->pwm_mos->duty_max,
 		config->wifi->ssid,
 		config->wifi->password,
 		config->wifi->channel,
@@ -150,6 +158,14 @@ esp_err_t config_get_value(
 		*pi = config->pwm_fan->duty;
 		return ESP_OK;
 	}
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_DUTY_MIN) == 0) {
+		*pi = config->pwm_fan->duty_min;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_DUTY_MAX) == 0) {
+		*pi = config->pwm_fan->duty_max;
+		return ESP_OK;
+	}
 	if (strcmp(key, CONFIG_KEY_PWM_MOS_CHANNEL) == 0) {
 		*pi = config->pwm_mos->channel;
 		return ESP_OK;
@@ -164,6 +180,14 @@ esp_err_t config_get_value(
 	}
 	if (strcmp(key, CONFIG_KEY_PWM_MOS_DUTY) == 0) {
 		*pi = config->pwm_mos->duty;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_DUTY_MIN) == 0) {
+		*pi = config->pwm_mos->duty_min;
+		return ESP_OK;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_DUTY_MAX) == 0) {
+		*pi = config->pwm_mos->duty_max;
 		return ESP_OK;
 	}
 	if (strcmp(key, CONFIG_KEY_WIFI_SSID) == 0) {
@@ -233,6 +257,11 @@ bool is_valid_config(struct config *config)
 		return false;
 	}
 	// config->pwm_fan->duty will always been 0-255.
+	if (config->pwm_fan->duty_min >= config->pwm_fan->duty_max) {
+		ESP_LOGD(TAG, "is_valid_config: pwm_fan->duty_min/max: "
+			"invalid value");
+		return false;
+	}
 
 	if (!config->pwm_mos) {
 		ESP_LOGD(TAG, "is_valid_config: pwm_mos is NULL");
@@ -255,6 +284,11 @@ bool is_valid_config(struct config *config)
 		return false;
 	}
 	// config->pwm_mos->duty will always been 0-255.
+	if (config->pwm_mos->duty_min >= config->pwm_mos->duty_max) {
+		ESP_LOGD(TAG, "is_valid_config: pwm_mos->duty_min/max: "
+			"invalid value");
+		return false;
+	}
 
 	if (!config->wifi) {
 		ESP_LOGD(TAG, "is_valid_config: wifi is NULL");
@@ -356,11 +390,15 @@ struct config* new_config_default_value()
 	config->pwm_fan->frequency = 25000;
 	config->pwm_fan->gpio = 4;
 	config->pwm_fan->duty = 100;
+	config->pwm_fan->duty_min = 30;
+	config->pwm_fan->duty_max = 255;
 
 	config->pwm_mos->channel = 1;
 	config->pwm_mos->frequency = 25000;
 	config->pwm_mos->gpio = 8;
 	config->pwm_mos->duty = 255;
+	config->pwm_mos->duty_min = 26;
+	config->pwm_mos->duty_max = 35;
 
 	config->wifi->ssid = str_clone("PWM_FAN_CONTROLLER");
 	config->wifi->password = str_clone("testpassword123");
@@ -508,6 +546,26 @@ esp_err_t config_set_value(
 		config->pwm_fan->duty = v;
 		return 0;
 	}
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_DUTY_MIN) == 0) {
+		int v = str2int(value);
+		if (v > 255 || v < 0) {
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_PWM_FAN_DUTY_MIN" [%d], "
+				"set to default 30", v);
+			v = 30;
+		}
+		config->pwm_fan->duty_min = v;
+		return 0;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_FAN_DUTY_MAX) == 0) {
+		int v = str2int(value);
+		if (v > 255 || v < 0) {
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_PWM_FAN_DUTY_MAX" [%d], "
+				"set to default 100", v);
+			v = 255;
+		}
+		config->pwm_fan->duty_max = v;
+		return 0;
+	}
 	if (strcmp(key, CONFIG_KEY_PWM_MOS_CHANNEL) == 0) {
 		int v = str2int(value);
 		if (v > 5) {
@@ -546,6 +604,26 @@ esp_err_t config_set_value(
 			v = 255;
 		}
 		config->pwm_mos->duty = v;
+		return 0;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_DUTY_MIN) == 0) {
+		int v = str2int(value);
+		if (v > 255 || v < 0) {
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_PWM_MOS_DUTY_MIN" [%d], "
+				"set to default 26", v);
+			v = 26;
+		}
+		config->pwm_mos->duty_min = v;
+		return 0;
+	}
+	if (strcmp(key, CONFIG_KEY_PWM_MOS_DUTY_MAX) == 0) {
+		int v = str2int(value);
+		if (v > 255 || v < 0) {
+			ESP_LOGE(TAG, "invalid "CONFIG_KEY_PWM_MOS_DUTY_MAX" [%d], "
+				"set to default 35", v);
+			v = 35;
+		}
+		config->pwm_mos->duty_max = v;
 		return 0;
 	}
 	if (strcmp(key, CONFIG_KEY_WIFI_SSID) == 0) {
@@ -651,10 +729,14 @@ esp_err_t config_marshal_json(struct config *config, char *data)
 		(unsigned int) config->pwm_fan->frequency,
 		(unsigned int) config->pwm_fan->gpio,
 		(unsigned int) config->pwm_fan->duty,
+		(unsigned int) config->pwm_fan->duty_min,
+		(unsigned int) config->pwm_fan->duty_max,
 		(unsigned int) config->pwm_mos->channel,
 		(unsigned int) config->pwm_mos->frequency,
 		(unsigned int) config->pwm_mos->gpio,
 		(unsigned int) config->pwm_mos->duty,
+		(unsigned int) config->pwm_mos->duty_min,
+		(unsigned int) config->pwm_mos->duty_max,
 		config->wifi->ssid,
 		config->wifi->password,
 		(unsigned int) config->wifi->channel,

@@ -9,12 +9,13 @@
 </head>
 <body>
     <div class="box">
-        <h1>Fan Speed</h1>
-        <hr>
-        <br>
         <form id="submit-form">
+            <!----------------------------->
+            <h2 class="center">FAN Speed</h2>
+            <hr>
+            <br>
             <div class="row">
-                <label for="fan-enable" class="column">Fan power:</label>
+                <label for="fan-enable" class="column">Fan Power:</label>
                 <input type='hidden' id="fan-enable-hidden" name='fan-enable' value='0'>
                 <div class="column">
                     <label class="switch">
@@ -25,18 +26,38 @@
             </div>
             <br>
             <div class="row">
-                <label for="fan-speed" class="column">Fan speed:</label>
+                <label for="fan-speed" class="column">Speed:</label>
                 <code id="fan-speed-percentage" class="column">N/A</code>
+            </div>
+            <div class="slidecontainer">
+                <input class="slider" type="range" id="fan-speed" name="fan-speed" min="30" max="255" value="0">
+            </div>
+            <!----------------------------->
+            <h2 class="center">LED Brightness</h2>
+            <hr>
+            <div class="row">
+                <label for="led-enable" class="column">LED Enabled:</label>
+                <input type='hidden' id="led-enable-hidden" name='led-enable' value='0'>
+                <div class="column">
+                    <label class="switch">
+                        <input type="checkbox" id="led-enable" name="led-enable" value="1">
+                        <span class="btn round"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="row">
+                <label for="led-brightness" class="column">Brightness:</label>
+                <code id="led-percentage" class="column">N/A</code>
             </div>
             <br>
             <div class="slidecontainer">
-                <input class="slider" type="range" id="fan-speed" name="fan-speed" min="30" max="255" value="0">
+                <input class="slider" type="range" id="led-brightness" name="led-brightness" min="26" max="35" value="0">
             </div>
             <br>
 
         </form>
         <button id="button-save" class="lbtn blue-bg">Save</button>
-        <button class="lbtn" onclick="location.href='/en';">Return</button>
+        <button class="lbtn" onclick="location.href='/en';">Back</button>
     </div>
     <footer>
         <p class="tip">© 2024 STARRY-S</p>

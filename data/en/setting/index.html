@@ -25,7 +25,7 @@
         <br>
         <label for="wifi_channel" class="column">Channel:</label>
         <!-- <input type="text" name="wifi_channel" id="wifi_channel" value=""> -->
-        <select id="wifi_channel" name="wifi_channel">
+        <select id="wifi_channel" name="wifi_channel" disabled>
             <option value="1" selected>1</option>
             <option value="2">2</option>
             <option value="3">3</option>
@@ -46,7 +46,7 @@
             <p class="tip">Settings about controller DHCP Server (IP address), restart to apply.</p>
         </blockquote>
         <label for="dhcps_ip" class="column">Controller IP:</label>
-        <input type="text" name="dhcps_ip" id="dhcps_ip" placeholder="192.168.4.1">
+        <input type="text" name="dhcps_ip" id="dhcps_ip" placeholder="192.168.4.1" disabled>
         <br>
         <label for="dhcps_netmask" class="column">Netmask:</label>
         <input type="text" name="dhcps_netmask" id="dhcps_netmask" placeholder="255.255.255.0" disabled>
@@ -55,7 +55,7 @@
         <input type="text" name="dhcps_as_router" id="dhcps_as_router" placeholder="0" disabled>
         <br>
 
-        <h2>PWM Settings</h2>
+        <h2>FAN Settings</h2>
         <hr>
         <blockquote>
             <p class="tip">PWM settings, <strong class="red">unsupport to change curretly.</strong></p>
@@ -69,8 +69,14 @@
         <label for="pwm_fan_gpio" class="column">GPIO:</label>
         <input type="text" name="pwm_fan_gpio" id="pwm_fan_gpio" placeholder="N/A" disabled>
         <br>
+        <label for="pwm_fan_duty_min" class="column">MIN:</label>
+        <input type="text" name="pwm_fan_duty_min" id="pwm_fan_duty_min" placeholder="30" disabled>
+        <br>
+        <label for="pwm_fan_duty_max" class="column">MAX:</label>
+        <input type="text" name="pwm_fan_duty_max" id="pwm_fan_duty_max" placeholder="255" disabled>
+        <br>
 
-        <h2>Fan (LED) Power Switch Settings</h2>
+        <h2>LED Settings</h2>
         <hr>
         <blockquote>
             <p class="tip">Fan (on-board LED) power switch settings, <strong class="red">unsupport to change curretly.</strong></p>
@@ -84,9 +90,15 @@
         <label for="pwm_mos_gpio" class="column">GPIO:</label>
         <input type="text" name="pwm_mos_gpio" id="pwm_mos_gpio" placeholder="N/A" disabled>
         <br>
+        <label for="pwm_mos_duty_min" class="column">MIN:</label>
+        <input type="text" name="pwm_mos_duty_min" id="pwm_mos_duty_min" placeholder="26" disabled>
+        <br>
+        <label for="pwm_mos_duty_max" class="column">MAX:</label>
+        <input type="text" name="pwm_mos_duty_max" id="pwm_mos_duty_max" placeholder="35" disabled>
+        <br>
         <strong id="failed_message" class="red"></strong>
         <button class="lbtn blue-bg" id="button_save">Save</button>
-        <button class="lbtn" onclick="location.href='/en';">Return</button>
+        <button class="lbtn" onclick="location.href='/en';">Back</button>
         <br>
         <br>
 

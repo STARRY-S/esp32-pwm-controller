@@ -6,10 +6,14 @@
         "pwm_fan_frequency":    document.getElementById("pwm_fan_frequency"),
         "pwm_fan_gpio":         document.getElementById("pwm_fan_gpio"),
         // "pwm_fan_duty":         document.getElementById("pwm_fan_duty"),
+        "pwm_fan_duty_min":     document.getElementById("pwm_fan_duty_min"),
+        "pwm_fan_duty_max":     document.getElementById("pwm_fan_duty_max"),
         "pwm_mos_channel":      document.getElementById("pwm_mos_channel"),
         "pwm_mos_frequency":    document.getElementById("pwm_mos_frequency"),
         "pwm_mos_gpio":         document.getElementById("pwm_mos_gpio"),
         // "pwm_mos_duty":         document.getElementById("pwm_mos_duty"),
+        "pwm_mos_duty_min":     document.getElementById("pwm_mos_duty_min"),
+        "pwm_mos_duty_max":     document.getElementById("pwm_mos_duty_max"),
         "wifi_ssid":            document.getElementById("wifi_ssid"),
         "wifi_password":        document.getElementById("wifi_password"),
         "wifi_channel":         document.getElementById("wifi_channel"),
@@ -99,6 +103,26 @@ function is_valid_config(inputs) {
             msg: "Invalid PWM FAN GPIO: " + pwm_fan_gpio,
         }
     }
+    let pwm_fan_duty_min = parseInt(inputs["pwm_fan_duty_min"].value);
+    if (isNaN(pwm_fan_duty_min) || pwm_fan_duty_min > 255 || pwm_fan_duty_min < 0) {
+        return {
+            ok: false,
+            msg: "Invalid PWM FAN DUTY MIN: " + pwm_fan_duty_min,
+        }
+    }
+    let pwm_fan_duty_max = parseInt(inputs["pwm_fan_duty_max"].value);
+    if (isNaN(pwm_fan_duty_max) || pwm_fan_duty_max > 255 || pwm_fan_duty_max < 0) {
+        return {
+            ok: false,
+            msg: "Invalid PWM FAN DUTY MAX: " + pwm_fan_duty_max,
+        }
+    }
+    if (pwm_fan_duty_min >= pwm_fan_duty_max) {
+        return {
+            ok: false,
+            msg: "Invalid PWM FAN DUTY MIN & MAX",
+        }
+    }
     let pwm_mos_channel = parseInt(inputs["pwm_mos_channel"].value);
     if (isNaN(pwm_mos_channel) || pwm_mos_channel > 4 || pwm_mos_channel < 0) {
         return {
@@ -119,6 +143,26 @@ function is_valid_config(inputs) {
         return {
             ok: false,
             msg: "Invalid LED GPIO: " + pwm_mos_gpio,
+        }
+    }
+    let pwm_mos_duty_min = parseInt(inputs["pwm_mos_duty_min"].value);
+    if (isNaN(pwm_mos_duty_min) || pwm_mos_duty_min > 255 || pwm_mos_duty_min < 0) {
+        return {
+            ok: false,
+            msg: "Invalid PWM MOS DUTY MIN: " + pwm_mos_duty_min,
+        }
+    }
+    let pwm_mos_duty_max = parseInt(inputs["pwm_mos_duty_max"].value);
+    if (isNaN(pwm_mos_duty_max) || pwm_mos_duty_max > 255 || pwm_mos_duty_max < 0) {
+        return {
+            ok: false,
+            msg: "Invalid PWM MOS DUTY MAX: " + pwm_mos_duty_max,
+        }
+    }
+    if (pwm_mos_duty_min >= pwm_mos_duty_max) {
+        return {
+            ok: false,
+            msg: "Invalid PWM MOS DUTY MIN & MAX",
         }
     }
     let wifi_ssid = inputs["wifi_ssid"].value;
