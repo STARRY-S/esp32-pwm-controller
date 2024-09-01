@@ -17,16 +17,16 @@
     let config = {};
     try {
         let settings_response = await fetch("/settings");
-        config = await settings_response.json()
+        config = await settings_response.json();
     } catch (e) {
-        console.error(e)
+        console.error(e);
         return
     }
 
-    const FAN_MIN = parseInt(config["pwm_fan_duty_min"])
-    const FAN_MAX = parseInt(config["pwm_fan_duty_max"])
-    const LED_MIN = parseInt(config["pwm_mos_duty_min"])
-    const LED_MAX = parseInt(config["pwm_mos_duty_max"])
+    const FAN_MIN = parseInt(config["pwm_fan_duty_min"]);
+    const FAN_MAX = parseInt(config["pwm_fan_duty_max"]);
+    const LED_MIN = parseInt(config["pwm_mos_duty_min"]);
+    const LED_MAX = parseInt(config["pwm_mos_duty_max"]);
 
     fan_speed.min = FAN_MIN;
     fan_speed.max = FAN_MAX;
@@ -50,7 +50,7 @@
 
     led_brightness.addEventListener("input", () => {
         led_percentage.textContent = get_percentage(LED_MIN, LED_MAX, led_brightness.value);
-    })
+    });
     led_enable.addEventListener("input", () => {
         if (led_enable.checked) {
             led_brightness.value = 28;
@@ -61,7 +61,7 @@
             led_brightness.type = "hidden";
             led_percentage.textContent = `N/A`;
         }
-    })
+    });
 
     let fan_duty = parseInt(config["pwm_fan_duty"]);
     let led_duty = parseInt(config["pwm_mos_duty"]);
